@@ -1,0 +1,12 @@
+<% content_for :no_autorefresh, "1" %>
+<% content_for :title, "New application" %>
+<% content_for :no_range, "1" %>
+<h1>New application</h1>
+<%= form_with model: @app, class: "panel form-panel" do |f| %>
+  <% if @app.errors.any? %><div class="callout bad"><%= @app.errors.full_messages.to_sentence %></div><% end %>
+  <div class="form-grid">
+    <%= f.label :name %><%= f.text_field :name, required: true %>
+    <%= f.label :apdex_t, "Apdex T (ms)" %><%= f.number_field :apdex_t, value: @app.apdex_t || 500 %>
+  </div>
+  <div class="form-actions"><%= f.submit "Create application" %> <%= link_to "Cancel", apps_path %></div>
+<% end %>

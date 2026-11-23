@@ -1,0 +1,2 @@
+<h1>Orders</h1>
+<table><% @orders.each do |o| %><tr><td><%= link_to o.id, order_path(o) %></td><td><%= o.customer.name %></td><td><%= o.status %></td><td><%= number_to_currency(o.total_cents / 100.0) %></td></tr><% end %></table>

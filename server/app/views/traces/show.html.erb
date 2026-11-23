@@ -1,0 +1,67 @@
+<% content_for :no_autorefresh, "1" %>
+<% content_for :title, "Trace #{@trace.tx_name}" %>
+<% content_for :crumb, "Trace" %>
+<div class="page-head">
+  <div>
+    <h1><%= tx_link(@trace.tx_type, @trace.tx_name) %></h1>
+    <div class="sub"><%= @trace.ts.strftime("%Y-%m-%d %H:%M:%S.%L UTC") %> · <span class="mono"><%= @trace.uri %></span> · <%= @trace.hostname %></div>
+  </div>
+</div>
+<div class="tiles">
+  <div class="tile"><div class="label">Duration</div><div class="value"><%= fmt_ms(@trace.duration) %></div></div>
+  <div class="tile"><div class="label">Status</div><div class="value"><%= @trace.error_class ? tag.span(@trace.error_class, class: "badge bad") : @trace.status %></div></div>
+  <div class="tile"><div class="label">Segments</div><div class="value"><%= @trace.segment_count %></div><div class="hint"><%= @rows.size - 1 %> shown</div></div>
+  <div class="tile"><div class="label">SQL queries</div><div class="value"><%= @sql_keys.size %></div><div class="hint"><%= @sql_counts.size %> distinct</div></div>
+</div>
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Time by layer</h2></div>
+    <% b = @trace.breakdown.transform_values(&:to_f) %>
+    <table data-controller="table-sort"><tbody>
+      <% Metrics::LAYERS.each do |l| %>
+        <% v = b[l[:key]].to_f %><% next if v < 0.05 %>
+        <tr><td><%= layer_dot(l[:key]) %><%= l[:label] %></td><td class="num"><%= fmt_ms(v) %></td><td class="num"><%= share_bar(v / @total, l[:color]) %></td></tr>
+      <% end %>
+    </tbody></table>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Repeated queries</h2><span class="hint">likely N+1</span></div>
+    <% repeated = @sql_counts.select { |_, c| c > 1 }.sort_by { |_, c| -c } %>
+    <table data-controller="table-sort"><tbody>
+      <% repeated.first(8).each do |key, c| %>
+        <% row = @rows.find { |r| r[:attrs]&.dig("key") == key } %>
+        <tr><td class="sql-cell"><%= link_to sql_snippet(row[:attrs]["sql"], 100), app_sql_path(current_app, key, **range_params) %></td><td class="num"><span class="badge <%= c >= 10 ? 'nplus1' : 'warn' %>"><%= c %>×</span></td></tr>
+      <% end %>
+      <% if repeated.empty? %><tr><td class="empty">No statement ran more than once.</td></tr><% end %>
+    </tbody></table>
+  </div>
+</div>
+<% if @trace.attrs.present? %>
+  <div class="panel"><h2>Attributes</h2><dl class="kv"><% @trace.attrs.each do |k, v| %><dt><%= k %></dt><dd class="mono"><%= v %></dd><% end %></dl></div>
+<% end %>
+<div class="panel" data-controller="waterfall">
+  <div class="panel-head"><h2>Waterfall</h2><span class="hint">click ▸ to collapse; bars are positioned on the request timeline</span></div>
+  <div class="waterfall">
+    <% @rows.each do |r| %>
+      <% color = layer_meta(r[:category])[:color] %>
+      <div class="wf-row" data-id="<%= r[:id] %>" data-parent="<%= r[:parent] %>">
+        <div class="wf-name" style="padding-left: <%= r[:depth] * 14 %>px" title="<%= r[:name] %>">
+          <% if r[:children].positive? %><span class="wf-toggle" data-action="click->waterfall#toggle">▾</span><% else %><span class="wf-toggle"></span><% end %>
+          <%= layer_dot(r[:category]) %><%= r[:name] %>
+        </div>
+        <div class="wf-track" title="starts at <%= fmt_ms(r[:start]) %>, self <%= fmt_ms(r[:exclusive]) %>">
+          <span class="wf-bar" style="left: <%= (r[:start] / @total * 100).clamp(0, 100).round(3) %>%; width: <%= (r[:duration] / @total * 100).clamp(0, 100).round(3) %>%; background: <%= color %>"></span>
+        </div>
+        <div class="wf-dur"><%= fmt_ms(r[:duration]) %></div>
+        <% if (sql = r[:attrs]&.dig("sql")) %>
+          <div class="wf-sql" style="padding-left: <%= r[:depth] * 14 + 30 %>px">
+            <%= link_to sql_snippet(sql, 200), app_sql_path(current_app, r[:attrs]["key"], **range_params) %>
+            <% if r[:attrs]["loc"] %><span class="muted mono" style="font-size: 11px"> · <%= r[:attrs]["loc"] %></span><% end %>
+          </div>
+        <% elsif (url = r[:attrs]&.dig("url")) %>
+          <div class="wf-sql mono muted" style="padding-left: <%= r[:depth] * 14 + 30 %>px"><%= url %> → <%= r[:attrs]["status"] %></div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

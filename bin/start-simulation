@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Runs bin/simulate in the background (log/simulate.log). Args pass through.
+cd "$(dirname "$0")/.."
+export PATH="$HOME/.rbenv/shims:$PATH"
+mkdir -p log
+nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' -- ruby bin/simulate "$@" </dev/null >log/simulate.log 2>&1 & echo $! >log/simulate.pid
+echo "simulation running (pid $(cat log/simulate.pid)), log/simulate.log"

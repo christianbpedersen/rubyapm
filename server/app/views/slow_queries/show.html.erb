@@ -1,0 +1,24 @@
+<% content_for :no_autorefresh, "1" %>
+<% content_for :title, "Slow query" %>
+<% content_for :crumb, "Slow query" %>
+<div class="page-head">
+  <div><h1>Slow query · <%= fmt_ms(@sample.duration) %></h1>
+    <div class="sub"><%= @sample.ts.strftime("%Y-%m-%d %H:%M:%S UTC") %> in <%= tx_link(@sample.tx_type, @sample.tx_name) %> · <span class="mono"><%= @sample.uri %></span> · <%= @sample.hostname %></div></div>
+  <div><%= link_to "Statement history →", app_sql_path(current_app, @sample.key, **range_params) if @statement %></div>
+</div>
+<div class="panel"><pre class="sql"><%= @statement&.sql %></pre></div>
+<%= render "slow_queries/plan", plan: @plan %>
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Application backtrace</h2></div>
+    <% if @sample.backtrace.any? %><pre><%= @sample.backtrace.join("\n") %></pre><% else %><div class="muted">No application frames.</div><% end %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Request trace</h2></div>
+    <% if @trace %>
+      <p>The slowest captured trace of this transaction around that moment: <%= link_to "#{fmt_ms(@trace.duration)} at #{@trace.ts.strftime('%H:%M:%S')}", app_trace_path(current_app, @trace, **range_params) %></p>
+    <% else %>
+      <div class="muted">No trace captured near this query.</div>
+    <% end %>
+  </div>
+</div>

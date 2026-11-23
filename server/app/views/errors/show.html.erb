@@ -1,0 +1,18 @@
+<% content_for :title, @group.error_class %>
+<% content_for :crumb, @group.error_class %>
+<div class="page-head"><div><h1 class="mono"><%= @group.error_class %></h1><div class="sub"><%= @group.message %></div></div></div>
+<div class="tiles">
+  <div class="tile"><div class="label">In window</div><div class="value"><%= fmt_count(@series.sum) %></div></div>
+  <div class="tile"><div class="label">All time</div><div class="value"><%= fmt_count(@group.total_count) %></div></div>
+  <div class="tile"><div class="label">First seen</div><div class="value" style="font-size: 15px"><%= time_ago(@group.first_seen_at) %></div></div>
+  <div class="tile"><div class="label">Last seen</div><div class="value" style="font-size: 15px"><%= time_ago(@group.last_seen_at) %></div></div>
+</div>
+<div class="panel"><%= chart(type: "bar", unit: "count", height: 160, series: [{ label: "Occurrences", data: @series, color: "#ef4444" }]) %></div>
+<div class="grid two">
+  <div class="panel"><div class="panel-head"><h2>Backtrace</h2></div><pre><%= @group.backtrace.join("\n") %></pre></div>
+  <div class="panel">
+    <div class="panel-head"><h2>Transactions</h2></div>
+    <table data-controller="table-sort"><tbody><% @by_tx.each do |type, name, c| %><tr><td><%= tx_link(type, name) %></td><td class="num"><%= fmt_count(c) %></td></tr><% end %></tbody></table>
+    <% if @traces.any? %><h3 style="margin-top: 16px">Traces</h3><%= render "shared/traces_table", traces: @traces %><% end %>
+  </div>
+</div>

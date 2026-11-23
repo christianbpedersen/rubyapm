@@ -1,0 +1,56 @@
+<% content_for :title, "Slow queries" %>
+<% content_for :crumb, "Slow queries" %>
+<div class="page-head">
+  <div><h1>Slow query analysis</h1><div class="sub">Statements with executions over the agent's slow-query threshold, with tail latency, call sites and query plans</div></div>
+</div>
+<div class="tiles">
+  <div class="tile"><div class="label">Slow executions</div><div class="value"><%= fmt_count(@statements.sum { |s| s[:slow] }) %></div></div>
+  <div class="tile"><div class="label">Statements affected</div><div class="value"><%= @statements.count { |s| s[:slow].positive? } %></div></div>
+  <div class="tile"><div class="label">Samples captured</div><div class="value"><%= fmt_count(@samples.size) %></div><div class="hint">slowest 50 shown</div></div>
+  <div class="tile"><div class="label">Worst execution</div><div class="value"><%= fmt_ms(@statements.map { |s| s[:max] }.max) %></div></div>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Slow executions per minute</h2></div>
+  <%= chart(type: "area", unit: "rpm", height: 180, series: [{ label: "Slow queries", data: @series[:slow], color: "#ef4444" }]) %>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Statements by slowness</h2><span class="hint">percentiles per statement from its own latency histogram</span></div>
+  <div class="table-wrap">
+  <table data-controller="table-sort">
+    <thead><tr><th>Statement</th><th class="num">Slow</th><th class="num">% slow</th><th class="num">p50</th><th class="num">p95</th><th class="num">p99</th><th class="num">Max</th><th class="num">Calls</th><th>Plan</th></tr></thead>
+    <tbody>
+      <% @statements.each do |s| %>
+        <tr>
+          <td class="sql-cell"><%= link_to sql_snippet(s[:sql], 120), app_sql_path(current_app, s[:key], **range_params) %>
+            <% if s[:location] %><div class="mono muted" style="font-size: 11px"><%= s[:location] %></div><% end %></td>
+          <td class="num"><%= s[:slow].positive? ? tag.span(fmt_count(s[:slow]), class: "badge warn") : 0 %></td>
+          <td class="num"><%= fmt_pct(s[:slow_rate]) %></td>
+          <td class="num"><%= fmt_ms(s[:p50]) %></td><td class="num"><%= fmt_ms(s[:p95]) %></td><td class="num"><%= fmt_ms(s[:p99]) %></td>
+          <td class="num"><%= fmt_ms(s[:max]) %></td><td class="num"><%= fmt_count(s[:count]) %></td>
+          <td><%= s[:explained] ? tag.span("EXPLAIN", class: "badge ok") : tag.span("–", class: "muted") %></td>
+        </tr>
+      <% end %>
+      <% if @statements.empty? %><tr><td colspan="9" class="empty">No slow queries in this window.</td></tr><% end %>
+    </tbody>
+  </table>
+  </div>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Slowest individual executions</h2></div>
+  <div class="table-wrap">
+  <table data-controller="table-sort">
+    <thead><tr><th>When</th><th>Statement</th><th>Transaction</th><th>Called from</th><th class="num">Duration</th></tr></thead>
+    <tbody>
+      <% @samples.each do |q| %>
+        <tr>
+          <td data-sort-value="<%= q.ts.to_f %>"><%= link_to q.ts.strftime("%m-%d %H:%M:%S"), app_slow_query_path(current_app, q, **range_params) %></td>
+          <td class="sql-cell"><%= sql_snippet(@sql[q.key]&.sql, 90) %></td>
+          <td><%= tx_link(q.tx_type, q.tx_name) %></td>
+          <td class="mono muted"><%= q.location %></td>
+          <td class="num"><%= link_to fmt_ms(q.duration), app_slow_query_path(current_app, q, **range_params) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  </div>
+</div>

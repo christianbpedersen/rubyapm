@@ -1,0 +1,71 @@
+<% content_for :title, "Deploy #{@deployment.revision}" %>
+<% content_for :crumb, "Deploy #{@deployment.revision}" %>
+<% content_for :no_range, "1" %>
+<div class="page-head">
+  <div>
+    <h1>Deploy <span class="mono"><%= @deployment.revision %></span></h1>
+    <div class="sub"><%= @deployment.deployed_at.strftime("%Y-%m-%d %H:%M:%S UTC") %> · first reported by <%= @deployment.hostname %> ·
+      <%= link_to "open this window on the overview →", app_path(current_app, **@zoom) %></div>
+  </div>
+  <div class="tabs">
+    <% [15, 30, 60, 120].each do |m| %><%= link_to "±#{m}m", app_deployment_path(current_app, @deployment, minutes: m), class: ("active" if m == @minutes) %><% end %>
+  </div>
+</div>
+<% b = @cmp.before.summary; a = @cmp.after.summary %>
+<% if @cmp.coarse? %>
+  <div class="callout info">This deploy is older than the minute-level retention, so whole hours are compared (the hour containing the deploy is left out).</div>
+<% end %>
+<% @cmp.overlapping_incidents.each do |i| %>
+  <div class="callout">
+    <strong>Also in this window:</strong> alert “<%= i.alert_policy.name %>” was open <%= i.opened_at.strftime("%H:%M") %>–<%= i.closed_at ? i.closed_at.strftime("%H:%M") : "now" %> UTC
+    (<%= i.opened_at < @deployment.deployed_at ? "before" : "after" %> the deploy), so not every change below is the deploy's doing.
+    <%= link_to "Look at it →", incident_drilldown_path(i) %>
+  </div>
+<% end %>
+<div class="panel">
+  <table data-controller="table-sort">
+    <thead><tr><th>Web requests</th><th class="num">Before (<%= ((@cmp.before.to - @cmp.before.from) / 60).round %> min)</th><th class="num">After (<%= ((@cmp.after.to - @cmp.after.from) / 60).round %> min)</th><th class="num">Change</th></tr></thead>
+    <tbody>
+      <tr><td>Throughput</td><td class="num"><%= fmt_rpm(b[:rpm]) %></td><td class="num"><%= fmt_rpm(a[:rpm]) %></td><td class="num"><%= render "deployments/delta", before: b[:rpm], after: a[:rpm], kind: :rpm, lower_is_better: false %></td></tr>
+      <tr><td>Average response</td><td class="num"><%= fmt_ms(b[:avg]) %></td><td class="num"><%= fmt_ms(a[:avg]) %></td><td class="num"><%= render "deployments/delta", before: b[:avg], after: a[:avg], kind: :ms %></td></tr>
+      <tr><td>p95</td><td class="num"><%= fmt_ms(b[:p95]) %></td><td class="num"><%= fmt_ms(a[:p95]) %></td><td class="num"><%= render "deployments/delta", before: b[:p95], after: a[:p95], kind: :ms %></td></tr>
+      <tr><td>p99</td><td class="num"><%= fmt_ms(b[:p99]) %></td><td class="num"><%= fmt_ms(a[:p99]) %></td><td class="num"><%= render "deployments/delta", before: b[:p99], after: a[:p99], kind: :ms %></td></tr>
+      <tr><td>Error rate</td><td class="num"><%= fmt_pct(b[:error_rate], 2) %></td><td class="num"><%= fmt_pct(a[:error_rate], 2) %></td><td class="num"><%= render "deployments/delta", before: b[:error_rate], after: a[:error_rate], kind: :pct %></td></tr>
+      <tr><td>Apdex</td><td class="num"><%= b[:apdex] ? format("%.2f", b[:apdex]) : "–" %></td><td class="num"><%= a[:apdex] ? format("%.2f", a[:apdex]) : "–" %></td><td class="num"><%= render "deployments/delta", before: b[:apdex], after: a[:apdex], kind: :apdex, lower_is_better: false %></td></tr>
+      <% Metrics::LAYERS.each do |l| %>
+        <% bv = b[:layers][l[:key]].to_f; av = a[:layers][l[:key]].to_f %>
+        <% next if bv < 0.05 && av < 0.05 %>
+        <tr><td><%= layer_dot(l[:key]) %><%= l[:label] %> <span class="muted">per request</span></td><td class="num"><%= fmt_ms(bv) %></td><td class="num"><%= fmt_ms(av) %></td><td class="num"><%= render "deployments/delta", before: bv, after: av, kind: :ms %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+<div class="grid two">
+  <div class="panel"><div class="panel-head"><h2>Response time by layer</h2><span class="hint">deploy marked</span></div>
+    <%= chart(type: "area", stacked: true, m: @zoom_metrics, series: layer_series(@series[:layers])) %></div>
+  <div class="panel"><div class="panel-head"><h2>Percentiles</h2></div>
+    <%= chart(type: "line", m: @zoom_metrics, series: [
+      { label: "p50", data: @percentiles[:p50], color: "#22c55e" }, { label: "p95", data: @percentiles[:p95], color: "#f59e0b" },
+      { label: "p99", data: @percentiles[:p99], color: "#ef4444" }]) %></div>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Biggest changes by transaction</h2><span class="hint">ranked by extra (or saved) time per minute at current traffic</span></div>
+  <div class="table-wrap">
+  <table data-controller="table-sort">
+    <thead><tr><th>Transaction</th><th class="num">Avg before → after</th><th class="num">Change</th><th class="num">p95 before → after</th><th class="num">Errors</th><th class="num">Impact</th></tr></thead>
+    <tbody>
+      <% @changes.each do |c| %>
+        <tr>
+          <td><%= link_to c[:name], app_transaction_path(current_app, type: c[:type], name: c[:name], **@zoom), class: "mono" %></td>
+          <td class="num"><%= fmt_ms(c[:before][:avg]) %> → <%= fmt_ms(c[:after][:avg]) %></td>
+          <td class="num"><%= render "deployments/delta", before: c[:before][:avg], after: c[:after][:avg], kind: :ms %></td>
+          <td class="num"><%= fmt_ms(c[:before][:p95]) %> → <%= fmt_ms(c[:after][:p95]) %></td>
+          <td class="num"><%= render "deployments/delta", before: c[:before][:error_rate], after: c[:after][:error_rate], kind: :pct %></td>
+          <td class="num"><%= c[:impact].positive? ? "+" : "−" %><%= fmt_ms(c[:impact].abs) %>/min</td>
+        </tr>
+      <% end %>
+      <% if @changes.empty? %><tr><td colspan="6" class="empty">Not enough traffic on both sides of this deploy to compare transactions.</td></tr><% end %>
+    </tbody>
+  </table>
+  </div>
+</div>

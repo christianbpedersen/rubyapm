@@ -1,0 +1,43 @@
+<% content_for :no_autorefresh, "1" %>
+<% content_for :title, "Settings" %>
+<% content_for :crumb, "Settings" %>
+<% content_for :no_range, "1" %>
+<h1>Settings</h1>
+<div class="panel">
+  <h2>Install the agent</h2>
+  <p>Add the gem to the monitored app's Gemfile:</p>
+  <pre>gem "ruby_apm", path: "<%= Rails.root.join("..", "agent").expand_path %>"</pre>
+  <p>Then configure it in <code>config/initializers/ruby_apm.rb</code>:</p>
+<pre>RubyAPM.configure do |c|
+  c.app_name = "<%= current_app.name %>"
+  c.api_key  = "<%= current_app.api_key %>"
+  c.endpoint = "<%= request.base_url %>"
+  c.apdex_t  = <%= current_app.apdex_t.round %>        # ms
+  c.flush_interval = 10    # seconds between batches
+  c.slow_query_threshold = 100  # ms; samples + EXPLAIN
+  # c.auto_instrument_paths = %w[app/services]   # trace every public method in these dirs
+end</pre>
+  <p class="muted">Data is aggregated in-process per minute and shipped as gzipped MessagePack every flush interval, so payload size depends on the number of distinct transactions, not on request volume.</p>
+</div>
+<div class="panel">
+  <h2>Details</h2>
+  <dl class="kv">
+    <dt>API key</dt><dd class="mono"><%= current_app.api_key %></dd>
+    <dt>Apdex T</dt><dd><%= fmt_ms(current_app.apdex_t) %></dd>
+    <dt>Created</dt><dd><%= current_app.created_at %></dd>
+    <dt>Last data</dt><dd><%= time_ago(current_app.last_seen_at) %></dd>
+  </dl>
+</div>
+<div class="panel">
+  <h2>API key</h2>
+  <p class="muted">Rotating the key immediately rejects agents still using the old one.</p>
+  <%= button_to "Generate a new API key", regenerate_key_app_path(current_app), class: "button", form: { data: { turbo_confirm: "Agents using the current key will stop reporting until reconfigured. Continue?" } } %>
+</div>
+<div class="panel" style="border-color: var(--bad)">
+  <h2>Delete application</h2>
+  <p class="muted">Permanently deletes <strong><%= current_app.name %></strong> and all of its metrics, traces, alerts and deployments. This cannot be undone.</p>
+  <%= form_with url: app_path(current_app), method: :delete, class: "inline" do |f| %>
+    <%= f.text_field :confirm_name, placeholder: "Type #{current_app.name} to confirm", autocomplete: "off" %>
+    <%= f.submit "Delete application", class: "button danger" %>
+  <% end %>
+</div>

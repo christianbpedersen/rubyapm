@@ -1,0 +1,16 @@
+<%# summary: Metrics#summary hash; time per request in each layer %>
+<% total = summary[:layers].values.sum %>
+<table data-controller="table-sort">
+  <thead><tr><th>Layer</th><th class="num">ms / request</th><th class="num">Share of time</th></tr></thead>
+  <tbody>
+    <% Metrics::LAYERS.each do |l| %>
+      <% v = summary[:layers][l[:key]].to_f %>
+      <% next if v < 0.05 %>
+      <tr>
+        <td><%= layer_dot(l[:key]) %><%= l[:label] %></td>
+        <td class="num"><%= fmt_ms(v) %></td>
+        <td class="num"><%= share_bar(total.positive? ? v / total : 0, l[:color]) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

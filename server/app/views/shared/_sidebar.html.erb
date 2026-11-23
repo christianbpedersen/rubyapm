@@ -1,0 +1,42 @@
+<%
+  groups = {
+    "Monitor" => [
+      ["Overview", :overview, app_path(current_app, **range_params), "apps#show"],
+      ["Transactions", :transactions, app_transactions_path(current_app, **range_params), "transactions"],
+      ["Errors", :errors, app_errors_path(current_app, **range_params), "errors"],
+      ["Alerts", :alerts, app_alerts_path(current_app), "alerts"]
+    ],
+    "Performance" => [
+      ["Database", :database, app_database_path(current_app, **range_params), "database"],
+      ["Slow queries", :slow, app_slow_queries_path(current_app, **range_params), "slow_queries"],
+      ["GraphQL", :graphql, app_graphql_path(current_app, **range_params), "graphql"],
+      ["External APIs", :external, app_external_path(current_app, **range_params), "external"],
+      ["Code & classes", :code, app_segments_path(current_app, **range_params), "segments"]
+    ],
+    "Operations" => [
+      ["Deployments", :deployments, app_deployments_path(current_app), "deployments"],
+      ["Hosts & runtime", :hosts, app_hosts_path(current_app, **range_params), "hosts"],
+      ["Settings", :settings, settings_app_path(current_app), "apps#settings"]
+    ]
+  }
+  here_action = "#{controller_name}##{action_name}"
+  open_incidents = current_app.incidents.open.count
+%>
+<nav class="sidebar" aria-label="Application">
+  <%= link_to root_path, class: "brand" do %><%= logo_mark %><span>RubyAPM</span><% end %>
+  <%= link_to apps_path, class: "app-switch", title: "All applications" do %>
+    <span class="app-switch-name"><%= current_app.name %></span><%= icon(:apps, size: 14) %>
+  <% end %>
+  <% groups.each do |title, items| %>
+    <div class="nav-group">
+      <div class="nav-title"><%= title %></div>
+      <% items.each do |label, ico, path, key| %>
+        <% active = key.include?("#") ? here_action == key : controller_name == key %>
+        <%= link_to path, class: ["nav-link", ("active" if active)], "aria-current": (active ? "page" : nil) do %>
+          <%= icon(ico) %><span><%= label %></span>
+          <% if key == "alerts" && open_incidents.positive? %><span class="nav-count"><%= open_incidents %></span><% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</nav>

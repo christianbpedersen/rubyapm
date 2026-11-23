@@ -1,0 +1,28 @@
+<% content_for :title, "Transactions" %>
+<% content_for :crumb, "Transactions" %>
+<div class="page-head">
+  <div><h1>Transactions</h1><div class="sub">Ranked by <%= { "total" => "time consumed", "avg" => "average duration", "p95" => "p95", "rpm" => "throughput", "errors" => "error rate", "apdex" => "worst apdex", "name" => "name" }[@sort] %></div></div>
+  <div class="tabs">
+    <%= link_to "Web", app_transactions_path(current_app, **range_params, type: "web"), class: ("active" if @type == "web") %>
+    <%= link_to "Background jobs", app_transactions_path(current_app, **range_params, type: "job"), class: ("active" if @type == "job") %>
+  </div>
+</div>
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Avg response of top transactions</h2><span class="hint">ms</span></div>
+    <% palette = %w[#6366f1 #f59e0b #14b8a6 #ef4444 #3b82f6 #a855f7] %>
+    <%= chart(type: "line", series: @top_series.each_with_index.map { |(n, d), i| { label: n, data: d, color: palette[i % 6] } }) %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Throughput</h2><span class="hint">per minute</span></div>
+    <%= chart(type: "area", unit: "rpm", series: [{ label: "Throughput", data: @series[:throughput], color: "#6366f1" }]) %>
+  </div>
+</div>
+<div class="panel">
+  <form class="filters" method="get">
+    <% range_params.merge(type: @type, sort: @sort).each do |k, v| %><input type="hidden" name="<%= k %>" value="<%= v %>"><% end %>
+    <input type="search" name="q" value="<%= params[:q] %>" placeholder="Filter transactions…" style="min-width: 280px">
+    <button>Filter</button>
+  </form>
+  <%= render "shared/tx_table", transactions: @transactions, sortable: true %>
+</div>

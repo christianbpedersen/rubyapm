@@ -1,0 +1,19 @@
+<div class="table-wrap">
+<table data-controller="table-sort">
+  <thead><tr><th>When</th><% unless local_assigns[:hide_name] %><th>Transaction</th><% end %><th>URI</th><th class="num">Duration</th><th>Layers</th><th class="num">Segments</th><th>Status</th></tr></thead>
+  <tbody>
+    <% traces.each do |t| %>
+      <tr>
+        <td data-sort-value="<%= t.ts.to_f %>"><%= link_to t.ts.strftime("%H:%M:%S"), app_trace_path(current_app, t, **range_params) %></td>
+        <% unless local_assigns[:hide_name] %><td><%= tx_link(t.tx_type, t.tx_name) %></td><% end %>
+        <td class="mono muted"><%= truncate(t.uri.to_s, length: 50) %></td>
+        <td class="num"><%= link_to fmt_ms(t.duration), app_trace_path(current_app, t, **range_params) %></td>
+        <td><%= layer_bar(t.breakdown.transform_values(&:to_f)) %></td>
+        <td class="num"><%= t.segment_count %></td>
+        <td><%= t.error_class ? tag.span(t.error_class, class: "badge bad") : t.status %></td>
+      </tr>
+    <% end %>
+    <% if traces.empty? %><tr><td colspan="7" class="empty">No slow traces captured in this window.</td></tr><% end %>
+  </tbody>
+</table>
+</div>

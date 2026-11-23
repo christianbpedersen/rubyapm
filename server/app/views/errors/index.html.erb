@@ -1,0 +1,24 @@
+<% content_for :title, "Errors" %>
+<% content_for :crumb, "Errors" %>
+<div class="page-head"><div><h1>Errors</h1><div class="sub">Exceptions grouped by class, message shape and first frame</div></div></div>
+<div class="tiles">
+  <div class="tile"><div class="label">Errors</div><div class="value"><%= fmt_count(@summary[:errors]) %></div></div>
+  <div class="tile"><div class="label">Error rate</div><div class="value"><%= fmt_pct(@summary[:error_rate], 2) %></div></div>
+  <div class="tile"><div class="label">Groups</div><div class="value"><%= @groups.size %></div></div>
+</div>
+<div class="panel"><div class="panel-head"><h2>Errors over time</h2></div>
+  <%= chart(type: "bar", unit: "count", height: 180, series: [{ label: "Errors", data: @series, color: "#ef4444" }]) %></div>
+<div class="panel">
+  <table data-controller="table-sort">
+    <thead><tr><th>Error</th><th class="num">Count</th><th class="num">Transactions</th><th>Last seen</th></tr></thead>
+    <tbody>
+      <% @groups.each do |e| %>
+        <tr>
+          <td><%= link_to e[:group].error_class, app_error_path(current_app, e[:group].fingerprint, **range_params), class: "mono" %><div class="muted"><%= truncate(e[:group].message, length: 140) %></div></td>
+          <td class="num"><%= fmt_count(e[:count]) %></td><td class="num"><%= e[:transactions] %></td><td data-sort-value="<%= e[:group].last_seen_at.to_i %>"><%= time_ago(e[:group].last_seen_at) %></td>
+        </tr>
+      <% end %>
+      <% if @groups.empty? %><tr><td colspan="4" class="empty">No errors in this window.</td></tr><% end %>
+    </tbody>
+  </table>
+</div>

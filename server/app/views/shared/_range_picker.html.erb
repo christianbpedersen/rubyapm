@@ -1,0 +1,13 @@
+<div class="range-picker">
+  <% if params[:from].present? %>
+    <%= link_to request.query_parameters.except("from", "to").merge(range: "1h"), class: "zoomed", title: "Zoomed by dragging a chart. Click to reset." do %>
+      <%= Time.at(params[:from].to_i).utc.strftime("%b %-d %H:%M") %>–<%= Time.at(params[:to].to_i).utc.strftime("%H:%M") %> UTC ✕
+    <% end %>
+  <% end %>
+  <% current = params[:from].present? ? nil : (Metrics::RANGES.key?(params[:range]) ? params[:range] : "1h") %>
+  <div class="segmented">
+    <% Metrics::RANGES.each_key do |r| %>
+      <%= link_to r, request.query_parameters.except("from", "to").merge(range: r), class: ("active" if r == current) %>
+    <% end %>
+  </div>
+</div>

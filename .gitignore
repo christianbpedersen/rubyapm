@@ -1,0 +1,12 @@
+.DS_Store
+agent/Gemfile.lock
+**/log/*.log
+**/tmp/
+**/node_modules/
+log/
+tmp-*.pid
+.terraform/
+*.tfstate*
+**/config/master.key
+**/config/credentials/*.key
+.env*

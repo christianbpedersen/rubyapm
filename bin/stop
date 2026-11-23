@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Stops everything bin/start and bin/start-simulation launched.
+cd "$(dirname "$0")/.."
+source bin/lib.sh
+if [[ -f log/simulate.pid ]] && kill "$(cat log/simulate.pid)" 2>/dev/null; then echo "stopped simulation"; fi
+for svc in sample:4500 fake_services:4501 server:4400; do
+  stop_port "${svc#*:}" && echo "stopped ${svc%%:*}"
+done
+rm -f tmp-*.pid log/*.pid

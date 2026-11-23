@@ -1,0 +1,7 @@
+<h1>Welcome to Shopwell</h1>
+<h2>Featured</h2>
+<div class="grid"><%= render partial: "products/card", collection: @featured, as: :product %></div>
+<h2>Categories</h2>
+<ul><% @categories.each do |c| %><li><%= c.name %></li><% end %></ul>
+<h2>Recent reviews</h2>
+<ul><% @recent_reviews.each do |r| %><li><%= r.customer.name %> on <%= r.product.name %>: <%= "★" * r.rating %></li><% end %></ul>

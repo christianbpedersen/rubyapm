@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Refreshes docs.chirpbin.com's vendored copy of the ruby_apm agent from a
+# tag of github.com/christianbpedersen/ruby_apm, then rebuilds docs.
+#   bin/update-docs-agent v0.1.0
+set -euo pipefail
+TAG=${1:?usage: bin/update-docs-agent <tag>}
+HOST=${DEPLOY_HOST:-nuc2}
+DOCS=${DOCS_DIR:-/home/christianpedersen/chirpbin.com/docs}
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+git clone -q --depth 1 --branch "$TAG" https://github.com/christianbpedersen/ruby_apm.git "$TMP/ruby_apm"
+rsync -az --delete --include 'lib/***' --include 'ruby_apm.gemspec' --include 'README.md' --include 'LICENSE' --exclude '*' \
+  "$TMP/ruby_apm/" "$HOST:$DOCS/vendor/gems/ruby_apm/"
+echo "== vendored ruby_apm $TAG into $HOST:$DOCS/vendor/gems/ruby_apm"
+
+ssh "$HOST" "cd '$DOCS' && docker compose up -d --build </dev/null 2>&1 | grep -E 'Built|Started|rror' ; sleep 15; docker logs --since 1m chirpbin-docs-web 2>&1 | grep -m1 'RubyAPM\\] reporting'"

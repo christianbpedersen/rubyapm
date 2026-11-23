@@ -1,0 +1,24 @@
+<%= form_with model: [current_app, @policy], url: (@policy.persisted? ? app_alert_path(current_app, @policy) : app_alerts_path(current_app)), class: "panel form-panel" do |f| %>
+  <% if @policy.errors.any? %><div class="callout bad"><%= @policy.errors.full_messages.to_sentence %></div><% end %>
+  <div class="form-grid">
+    <%= f.label :name %><%= f.text_field :name, required: true %>
+    <%= f.label :metric %><%= f.select :metric, AlertPolicy::METRICS.map { |k, v| [v[:label], k] } %>
+    <%= f.label :comparison, "Condition" %>
+    <div class="inline"><%= f.select :comparison, [["above", "above"], ["below", "below"]] %> <%= f.number_field :threshold, step: "any", required: true %></div>
+    <%= f.label :window_minutes, "Window (minutes)" %><%= f.number_field :window_minutes, min: 1, max: 60 %>
+    <%= f.label :tx_type, "Transactions" %><%= f.select :tx_type, [["Web requests", "web"], ["Background jobs", "job"]] %>
+    <%= f.label :tx_name, "Only this transaction" %><%= f.text_field :tx_name, placeholder: "e.g. OrdersController#create (blank = all)", list: "tx-names" %>
+    <%= f.label :target, "External host" %><%= f.text_field :target, placeholder: "for External API avg, e.g. api.stripe.com" %>
+    <%= f.label :min_samples, "Minimum samples" %><%= f.number_field :min_samples, min: 0 %>
+    <%= f.label :webhook_url, "Webhook URL" %><%= f.url_field :webhook_url, placeholder: "Slack incoming webhook or any URL accepting JSON" %>
+    <%= f.label :enabled %><%= f.check_box :enabled %>
+  </div>
+  <datalist id="tx-names">
+    <% TxRollup.where(app_id: current_app.id, ts: 1.day.ago..).distinct.limit(500).pluck(:name).sort.each do |n| %><option value="<%= n %>"><% end %>
+  </datalist>
+  <p class="muted">Minimum samples: the window must contain at least this many requests before the condition counts, so a single slow request at 3am does not page anyone.</p>
+  <div class="form-actions"><%= f.submit(@policy.persisted? ? "Save" : "Create alert") %> <%= link_to "Cancel", app_alerts_path(current_app) %></div>
+<% end %>
+<% if @policy.persisted? %>
+  <%= button_to "Delete alert", app_alert_path(current_app, @policy), method: :delete, class: "button danger", form: { data: { turbo_confirm: "Delete this alert and its incident history?" } } %>
+<% end %>

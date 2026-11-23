@@ -1,0 +1,7 @@
+<h1><%= @product.name %></h1>
+<p><%= @product.description %></p>
+<p><%= number_to_currency(@product.price) %> · <%= @stock %> in stock · <%= @product.category.name %></p>
+<h2>Reviews</h2>
+<% @reviews.each do |r| %><p><strong><%= r.customer.name %></strong> <%= "★" * r.rating %><br><%= r.body %></p><% end %>
+<h2>You may also like</h2>
+<div class="grid"><%= render partial: "products/card", collection: @recommendations, as: :product %></div>

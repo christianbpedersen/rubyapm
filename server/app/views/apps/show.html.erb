@@ -1,0 +1,104 @@
+<% content_for :title, "#{current_app.name} overview" %>
+<div class="page-head">
+  <div>
+    <h1>Overview</h1>
+    <div class="sub">Drag across any chart to zoom in. Click a row to drill down.</div>
+  </div>
+  <div class="tabs">
+    <%= link_to "Web requests", app_path(current_app, **range_params, type: "web"), class: ("active" if @type == "web") %>
+    <%= link_to "Background jobs", app_path(current_app, **range_params, type: "job"), class: ("active" if @type == "job") %>
+  </div>
+</div>
+
+<% current_app.incidents.open.includes(:alert_policy).each do |i| %>
+  <div class="callout bad"><strong><%= i.alert_policy.name %></strong> — open since <%= time_ago(i.opened_at) %>, now <%= i.alert_policy.format_value(i.last_value) %> · <%= link_to "investigate →", incident_drilldown_path(i) %></div>
+<% end %>
+<%= render "shared/tiles", summary: @summary, noun: (@type == "job" ? "jobs" : "requests") %>
+
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Response time by layer</h2><span class="hint">avg ms per <%= @type == "job" ? "job" : "request" %>, stacked</span></div>
+    <%= chart(type: "area", stacked: true, series: layer_series(@series[:layers])) %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Throughput</h2><span class="hint">per minute</span></div>
+    <% tp = [{ label: @type == "job" ? "Jobs" : "Web", data: @series[:throughput], color: "#6366f1" }] %>
+    <% tp << { label: "Jobs", data: @job_series[:throughput], color: "#ec4899" } if @job_series && @job_series[:throughput].any?(&:positive?) %>
+    <%= chart(type: "line", unit: "rpm", series: tp) %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Latency percentiles</h2><span class="hint">from merged histograms</span></div>
+    <%= chart(type: "line", series: [
+      { label: "p50", data: @percentiles[:p50], color: "#22c55e" },
+      { label: "p95", data: @percentiles[:p95], color: "#f59e0b" },
+      { label: "p99", data: @percentiles[:p99], color: "#ef4444" },
+      { label: "mean", data: @series[:avg], color: "#6366f1" }]) %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Errors &amp; Apdex</h2><span class="hint">error rate % · Apdex score</span></div>
+    <%= chart(type: "area", unit: "%", height: 92, series: [{ label: "Error rate", data: @series[:error_rate], color: "#ef4444" }]) %>
+    <%= chart(type: "line", unit: "apdex", height: 92, series: [{ label: "Apdex", data: @series[:apdex], color: "#16a34a" }]) %>
+  </div>
+</div>
+
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Where the time goes</h2><span class="hint">mean per <%= @type == "job" ? "job" : "request" %></span></div>
+    <%= render "shared/layer_table", summary: @summary %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Latency distribution</h2><span class="hint">requests per latency bucket</span></div>
+    <%= chart(type: "bar", x: "category", height: 286, unit: "count", labels: @histogram[:labels], series: [{ label: "Requests", data: @histogram[:counts], color: "#6366f1" }]) %>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Most time-consuming transactions</h2><%= link_to "All transactions →", app_transactions_path(current_app, **range_params, type: @type) %></div>
+  <%= render "shared/tx_table", transactions: @transactions %>
+</div>
+
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Top SQL by total time</h2><%= link_to "Database →", app_database_path(current_app, **range_params) %></div>
+    <%= render "shared/sql_table", statements: @sql %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>External APIs</h2><%= link_to "All services →", app_external_path(current_app, **range_params) %></div>
+    <table data-controller="table-sort">
+      <thead><tr><th>Host</th><th class="num">Calls</th><th class="num">Avg</th><th class="num">Max</th><th>Share of time</th></tr></thead>
+      <tbody>
+        <% @external.each do |h| %>
+          <tr>
+            <td><%= link_to h[:host], app_external_host_path(current_app, h[:host], **range_params), class: "mono" %></td>
+            <td class="num"><%= fmt_rpm(h[:rpm]) %></td>
+            <td class="num"><%= fmt_ms(h[:avg]) %></td>
+            <td class="num"><%= fmt_ms(h[:max]) %></td>
+            <td><%= share_bar(h[:share], layer_meta("external")[:color]) %></td>
+          </tr>
+        <% end %>
+        <% if @external.empty? %><tr><td colspan="5" class="empty">No outbound HTTP calls.</td></tr><% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Slowest traces</h2></div>
+    <%= render "shared/traces_table", traces: @traces %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Top errors</h2><%= link_to "Errors →", app_errors_path(current_app, **range_params) %></div>
+    <table data-controller="table-sort">
+      <tbody>
+        <% @errors.each do |e| %>
+          <tr>
+            <td><%= link_to e[:group].error_class, app_error_path(current_app, e[:group].fingerprint, **range_params), class: "mono" %><div class="muted"><%= truncate(e[:group].message, length: 90) %></div></td>
+            <td class="num"><%= fmt_count(e[:count]) %></td>
+          </tr>
+        <% end %>
+        <% if @errors.empty? %><tr><td class="empty">No errors in this window.</td></tr><% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

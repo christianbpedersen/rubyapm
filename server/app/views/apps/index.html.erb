@@ -1,0 +1,27 @@
+<% content_for :title, "Applications" %>
+<div class="page-head">
+  <div><h1>Applications</h1><div class="sub">Last hour</div></div>
+  <%= link_to "Add application", new_app_path, class: "button" %>
+</div>
+<% if @apps.empty? %>
+  <div class="panel empty">No applications yet. <%= link_to "Add one", new_app_path %>, or point an agent at this server (in development, unknown API keys register themselves).</div>
+<% end %>
+<div class="grid three">
+  <% @apps.each do |app| %>
+    <% s = @summaries[app.id] %>
+    <div class="panel">
+      <div class="panel-head">
+        <h2><%= link_to app.name, app_path(app) %></h2>
+        <%= apdex_badge(s[:web][:apdex]) %>
+      </div>
+      <div class="mini-stats">
+        <div><span>Throughput</span><strong><%= fmt_rpm(s[:web][:rpm]) %></strong></div>
+        <div><span>Avg</span><strong><%= fmt_ms(s[:web][:avg]) %></strong></div>
+        <div><span>p95</span><strong><%= fmt_ms(s[:web][:p95]) %></strong></div>
+        <div><span>Errors</span><strong><%= fmt_pct(s[:web][:error_rate], 2) %></strong></div>
+      </div>
+      <%= chart(type: "area", stacked: true, height: 110, zoom: false, legend: false, m: s[:metrics], series: layer_series(s[:series][:layers])) %>
+      <div class="muted card-foot">Last data <%= time_ago(app.last_seen_at) %> · Jobs <%= fmt_rpm(s[:jobs][:rpm]) %></div>
+    </div>
+  <% end %>
+</div>

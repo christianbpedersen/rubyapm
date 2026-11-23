@@ -1,0 +1,28 @@
+<% content_for :title, "Hosts" %>
+<% content_for :crumb, "Hosts" %>
+<h1>Hosts &amp; runtime</h1>
+<p class="muted">One line per process. CPU is the share of one core; GC and allocation figures are per minute.</p>
+<% palette = %w[#6366f1 #f59e0b #14b8a6 #ef4444 #3b82f6 #a855f7 #84cc16 #ec4899] %>
+<% procs = @runtime.keys.sort %>
+<% if procs.any? %>
+<div class="grid two">
+  <% [[:rss, "Memory (RSS, MB)", "count"], [:cpu, "CPU (% of a core)", "%"], [:gc_time, "GC time (ms per minute)", "ms"],
+      [:allocations, "Allocations per minute", "count"], [:db_busy, "Busy DB connections (max)", "count"], [:gc_major, "Major GCs per minute", "count"]].each do |key, title, unit| %>
+    <div class="panel"><div class="panel-head"><h2><%= title %></h2></div>
+      <%= chart(type: "line", unit: unit, height: 180, series: procs.each_with_index.map { |p, i| { label: p, data: @runtime[p][key], color: palette[i % 8] } }) %>
+    </div>
+  <% end %>
+</div>
+<% end %>
+<h2>Agent processes</h2>
+<div class="panel">
+  <table data-controller="table-sort">
+    <thead><tr><th>Host</th><th class="num">PID</th><th>Env</th><th>Agent</th><th>Rails / Ruby</th><th class="num">Payloads</th><th class="num">Data sent</th><th class="num">Avg payload</th><th>Last seen</th></tr></thead>
+    <tbody>
+      <% @hosts.each do |h| %>
+        <tr><td class="mono"><%= h.hostname %></td><td class="num"><%= h.pid %></td><td><%= h.environment %></td><td><%= h.agent_version %></td><td><%= h.rails_version %> / <%= h.ruby_version %></td>
+          <td class="num"><%= fmt_count(h.payloads) %></td><td class="num"><%= fmt_bytes(h.bytes) %></td><td class="num"><%= fmt_bytes(h.payloads.positive? ? h.bytes / h.payloads : 0) %></td><td data-sort-value="<%= h.last_seen_at.to_i %>"><%= time_ago(h.last_seen_at) %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

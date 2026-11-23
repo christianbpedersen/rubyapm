@@ -1,0 +1,74 @@
+<% content_for :title, "Database" %>
+<% content_for :crumb, "Database" %>
+<div class="page-head">
+  <div><h1>Database</h1><div class="sub">ActiveRecord overhead (Ruby building queries and objects) vs time actually waiting on the database</div></div>
+</div>
+<% per_req_ar = @summary[:layers]["activerecord"].to_f %>
+<% per_req_db = @summary[:layers]["database"].to_f %>
+<div class="tiles">
+  <div class="tile"><div class="label">Database time</div><div class="value"><%= fmt_ms(per_req_db) %></div><div class="hint">per transaction</div></div>
+  <div class="tile"><div class="label">ActiveRecord overhead</div><div class="value"><%= fmt_ms(per_req_ar) %></div><div class="hint">per transaction</div></div>
+  <div class="tile"><div class="label">DB share of time</div><div class="value"><%= fmt_pct(@summary[:avg].positive? ? per_req_db / @summary[:avg] : 0) %></div></div>
+  <div class="tile"><div class="label">Queries</div><div class="value"><%= fmt_count(@statements.sum { |s| s[:count] }) %></div><div class="hint"><%= @statements.size %> distinct statements</div></div>
+  <div class="tile"><div class="label">N+1 suspects</div><div class="value"><%= @n_plus_one.size %></div></div>
+</div>
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>ActiveRecord vs Database</h2><span class="hint">avg ms per transaction</span></div>
+    <%= chart(type: "area", stacked: true, series: layer_series(@series[:layers], %w[activerecord database])) %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Time by table &amp; operation</h2><span class="hint">ms of DB time per minute</span></div>
+    <% palette = %w[#ef4444 #f59e0b #6366f1 #14b8a6 #3b82f6 #a855f7] %>
+    <%= chart(type: "area", stacked: true, series: @segment_series.each_with_index.map { |(n, d), i| { label: n.delete_prefix("Database/").delete_prefix("ActiveRecord/"), data: d, color: palette[i % 6] } }) %>
+  </div>
+</div>
+<% if @n_plus_one.any? %>
+  <div class="panel">
+    <div class="panel-head"><h2>N+1 suspects</h2><span class="hint">the same statement ran many times inside one request</span></div>
+    <% @n_plus_one.each do |s| %>
+      <div class="callout bad">
+        <strong><%= s[:max_per_tx] %>× in one request</strong> across <%= s[:callers] %> transaction(s), <%= fmt_ms(s[:total]) %> total ·
+        <%= link_to sql_snippet(s[:sql], 160), app_sql_path(current_app, s[:key], **range_params) %>
+        <% if s[:location] %><div class="mono muted" style="font-size: 11.5px">from <%= s[:location] %> — consider <code>includes</code>/<code>preload</code></div><% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>By table</h2></div>
+    <table data-controller="table-sort">
+      <thead><tr><th>Table</th><th>Operation</th><th class="num">Calls</th><th class="num">Avg</th><th class="num">Max</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        <% @by_table.each do |t| %>
+          <tr>
+            <td><%= link_to t[:table], app_database_path(current_app, **range_params, table: t[:table]), class: "mono" %></td>
+            <td><%= link_to t[:operation], app_database_path(current_app, **range_params, table: t[:table], op: t[:operation]) %></td>
+            <td class="num"><%= fmt_rpm(t[:rpm]) %></td><td class="num"><%= fmt_ms(t[:avg]) %></td><td class="num"><%= fmt_ms(t[:max]) %></td><td class="num"><%= fmt_ms(t[:total]) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>ActiveRecord &amp; DB segments</h2></div>
+    <table data-controller="table-sort">
+      <thead><tr><th>Segment</th><th class="num">Calls</th><th class="num">Avg</th><th>Share</th></tr></thead>
+      <tbody>
+        <% @db_segments.each do |s| %>
+          <tr><td><%= layer_dot(s[:category]) %><%= segment_link(s[:name]) %></td><td class="num"><%= fmt_rpm(s[:rpm]) %></td><td class="num"><%= fmt_ms(s[:avg]) %></td><td><%= share_bar(s[:share], layer_meta(s[:category])[:color]) %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="panel">
+  <form class="filters" method="get">
+    <% range_params.merge(sort: @sort, table: params[:table], op: params[:op]).compact.each do |k, v| %><input type="hidden" name="<%= k %>" value="<%= v %>"><% end %>
+    <input type="search" name="q" value="<%= params[:q] %>" placeholder="Search SQL…" style="min-width: 280px">
+    <button>Search</button>
+    <% if params[:table] || params[:op] %><span class="muted">table: <%= params[:table] || "any" %>, op: <%= params[:op] || "any" %> · <%= link_to "clear", app_database_path(current_app, **range_params) %></span><% end %>
+  </form>
+  <%= render "shared/sql_table", statements: @statements, sortable: true %>
+</div>

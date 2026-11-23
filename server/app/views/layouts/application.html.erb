@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= content_for(:title) ? "#{yield(:title)} · RubyAPM" : "RubyAPM" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <%# Auto-refresh re-visits the same URL; morph it in and keep the scroll position. %>
+    <meta name="turbo-refresh-method" content="morph">
+    <meta name="turbo-refresh-scroll" content="preserve">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <script>
+      // Apply the saved theme before first paint; no saved choice follows the OS.
+      try { var t = localStorage.getItem("nf-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t } catch (e) {}
+    </script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%236366f1%22/><path d=%22M7 21l6-8 5 5 7-10%22 stroke=%22white%22 stroke-width=%223%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>">
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "chart.umd", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <% autorefresh = current_app && !content_for?(:no_autorefresh) %>
+  <body <%= tag.attributes(data: { controller: ("autorefresh" if autorefresh), autorefresh_interval_value: (10_000 if autorefresh) }.compact) %>>
+    <div class="shell <%= current_app ? 'with-nav' : 'no-nav' %>">
+      <% if current_app %>
+        <%= render "shared/sidebar" %>
+      <% end %>
+      <main>
+        <header class="topbar">
+          <div class="crumbs">
+            <% unless current_app %><%= link_to root_path, class: "brand" do %><%= logo_mark %><span>RubyAPM</span><% end %><% end %>
+            <% if current_app %><%= link_to current_app.name, app_path(current_app, **range_params), class: "crumb-app" %><% end %>
+            <% if content_for?(:crumb) %><span class="sep">/</span><span class="crumb" title="<%= yield(:crumb) %>"><%= yield(:crumb) %></span><% end %>
+          </div>
+          <% if current_app %>
+            <form action="<%= app_search_path(current_app) %>" method="get" class="search" role="search">
+              <%= icon(:search, size: 14) %>
+              <% range_params.each do |k, v| %><input type="hidden" name="<%= k %>" value="<%= v %>"><% end %>
+              <input type="search" name="q" value="<%= params[:q] if controller_name == "search" %>" placeholder="Search transactions, SQL, code…" aria-label="Search">
+            </form>
+          <% end %>
+          <div class="topbar-right">
+            <% if autorefresh %>
+              <button type="button" class="live" data-autorefresh-target="indicator" data-action="autorefresh#toggle">
+                <span class="live-dot"></span><span data-autorefresh-target="label">Live</span>
+              </button>
+            <% end %>
+            <% if current_app && !content_for?(:no_range) %>
+              <%= render "shared/range_picker" %>
+            <% end %>
+            <button type="button" class="theme-toggle" data-controller="theme" data-action="theme#toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+              <span class="icon-moon"><%= icon(:moon) %></span><span class="icon-sun"><%= icon(:sun) %></span>
+            </button>
+          </div>
+        </header>
+        <div class="content">
+          <% flash.each do |type, msg| %><div class="flash <%= type %>"><%= msg %></div><% end %>
+          <%= yield %>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+<% content_for :title, "Code & classes" %>
+<% content_for :crumb, "Code & classes" %>
+<div class="page-head">
+  <div><h1>Code &amp; classes</h1><div class="sub">Instrumented code across all transactions. Exclusive time excludes time spent in children.</div></div>
+</div>
+<div class="tabs">
+  <% SegmentsController::CATEGORY_TABS.each do |key, tab| %>
+    <%= link_to tab[:label], app_segments_path(current_app, **range_params, cat: key), class: ("active" if key == @tab) %>
+  <% end %>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Time consumed</h2><span class="hint">exclusive ms per minute, top 8</span></div>
+  <% palette = %w[#6366f1 #f59e0b #ef4444 #14b8a6 #3b82f6 #a855f7 #84cc16 #ec4899] %>
+  <%= chart(type: "area", stacked: true, series: @series.each_with_index.map { |(n, d), i| { label: n, data: d, color: palette[i % 8] } }) %>
+</div>
+<% if @grouped %>
+<div class="panel">
+  <div class="panel-head"><h2>By class</h2></div>
+  <table data-controller="table-sort">
+    <thead><tr><th>Class</th><th class="num">Methods</th><th class="num">Calls</th><th class="num">Exclusive time</th><th>Share of all time</th></tr></thead>
+    <tbody>
+      <% @grouped.each do |g| %>
+        <tr><td class="mono"><%= link_to g[:klass], app_segments_path(current_app, **range_params, cat: @tab, q: g[:klass]) %></td><td class="num"><%= g[:methods] %></td><td class="num"><%= fmt_count(g[:count]) %></td><td class="num"><%= fmt_ms(g[:excl]) %></td><td><%= share_bar(g[:share]) %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+<% end %>
+<div class="panel">
+  <form class="filters" method="get">
+    <% range_params.merge(cat: @tab).each do |k, v| %><input type="hidden" name="<%= k %>" value="<%= v %>"><% end %>
+    <input type="search" name="q" value="<%= params[:q] %>" placeholder="Filter by name…" style="min-width: 280px"><button>Filter</button>
+  </form>
+  <div class="table-wrap">
+  <table data-controller="table-sort">
+    <thead><tr><th>Segment</th><th>Layer</th><th class="num">Calls</th><th class="num">Avg</th><th class="num">Max</th><th class="num">Exclusive</th><th>Share of all time</th></tr></thead>
+    <tbody>
+      <% @segments.each do |s| %>
+        <tr>
+          <td><%= segment_link(s[:name]) %></td>
+          <td><%= layer_dot(s[:category]) %><%= category_label(s[:category]) %></td>
+          <td class="num"><%= fmt_rpm(s[:rpm]) %></td><td class="num"><%= fmt_ms(s[:avg]) %></td><td class="num"><%= fmt_ms(s[:max]) %></td>
+          <td class="num"><%= fmt_ms(s[:excl]) %></td><td><%= share_bar(s[:share], layer_meta(s[:category])[:color]) %></td>
+        </tr>
+      <% end %>
+      <% if @segments.empty? %><tr><td colspan="7" class="empty">Nothing recorded. Trace classes with <code>include RubyAPM::MethodTracer</code> + <code>trace_method</code>, or set <code>auto_instrument_paths</code>.</td></tr><% end %>
+    </tbody>
+  </table>
+  </div>
+</div>

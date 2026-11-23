@@ -1,0 +1,19 @@
+<%# before, after, kind: :ms | :pct | :rpm | :apdex, lower_is_better %>
+<% lower = local_assigns.fetch(:lower_is_better, true) %>
+<% if before.nil? || after.nil? %>
+  <span class="muted">–</span>
+<% else %>
+  <% diff = after - before %>
+  <% diff = 0.0 if kind == :ms && diff.abs < 0.05 %>
+  <% rel = before.to_f.zero? ? nil : diff / before %>
+  <% worse = lower ? diff.positive? : diff.negative? %>
+  <% significant = kind == :apdex ? diff.abs >= 0.02 : (kind == :pct ? diff.abs >= 0.005 : rel && rel.abs >= 0.1) %>
+  <span class="badge <%= significant ? (worse ? 'bad' : 'good') : '' %>">
+    <%= diff.zero? ? "±" : (diff.positive? ? "+" : "") %><%= case kind
+        when :ms then fmt_ms(diff.abs).then { |s| diff.negative? ? "−#{s}" : s }
+        when :pct then "#{(diff * 100).round(2)} pp"
+        when :apdex then format("%.2f", diff)
+        else rel ? "#{(rel * 100).round}%" : diff.round(2).to_s
+        end %>
+  </span>
+<% end %>

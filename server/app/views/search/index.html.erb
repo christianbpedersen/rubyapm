@@ -1,0 +1,37 @@
+<% content_for :title, "Search" %>
+<% content_for :crumb, "Search" %>
+<h1>Search<%= ": “#{@q}”" if @q.present? %></h1>
+<% if @q.blank? %>
+  <div class="panel empty">Type a controller, job, model, table, SQL fragment, class name or error.</div>
+<% else %>
+  <% total = [@transactions, @segments, @statements, @errors].sum(&:size) %>
+  <% if total.zero? %><div class="panel empty">Nothing matches “<%= @q %>” in this time window.</div><% end %>
+  <% if @transactions.any? %>
+    <div class="panel"><h2>Transactions</h2><table data-controller="table-sort"><tbody>
+      <% @transactions.each do |type, name, count, total_ms| %>
+        <tr><td><%= type_badge(type) %> <%= tx_link(type, name) %></td><td class="num"><%= fmt_count(count) %> calls</td><td class="num"><%= fmt_ms(total_ms) %> total</td></tr>
+      <% end %>
+    </tbody></table></div>
+  <% end %>
+  <% if @segments.any? %>
+    <div class="panel"><h2>Code, views, queries &amp; services</h2><table data-controller="table-sort"><tbody>
+      <% @segments.each do |name, cat, count, excl| %>
+        <tr><td><%= layer_dot(cat) %><%= segment_link(name) %></td><td><%= category_label(cat) %></td><td class="num"><%= fmt_count(count) %> calls</td><td class="num"><%= fmt_ms(excl) %> exclusive</td></tr>
+      <% end %>
+    </tbody></table></div>
+  <% end %>
+  <% if @statements.any? %>
+    <div class="panel"><h2>SQL statements</h2><table data-controller="table-sort"><tbody>
+      <% @statements.each do |st| %>
+        <tr><td class="sql-cell"><%= link_to sql_snippet(st.sql, 160), app_sql_path(current_app, st.key, **range_params) %><% if st.location %><div class="mono muted" style="font-size: 11px"><%= st.location %></div><% end %></td><td class="muted"><%= time_ago(st.last_seen_at) %></td></tr>
+      <% end %>
+    </tbody></table></div>
+  <% end %>
+  <% if @errors.any? %>
+    <div class="panel"><h2>Errors</h2><table data-controller="table-sort"><tbody>
+      <% @errors.each do |e| %>
+        <tr><td><%= link_to e.error_class, app_error_path(current_app, e.fingerprint, **range_params), class: "mono" %> <span class="muted"><%= truncate(e.message, length: 100) %></span></td><td class="num"><%= fmt_count(e.total_count) %></td></tr>
+      <% end %>
+    </tbody></table></div>
+  <% end %>
+<% end %>

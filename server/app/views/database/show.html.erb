@@ -1,0 +1,60 @@
+<% content_for :title, "SQL statement" %>
+<% content_for :crumb, "SQL" %>
+<div class="page-head">
+  <div><h1>SQL statement</h1><div class="sub"><%= @statement.operation %> on <span class="mono"><%= @statement.table_name || "?" %></span> · first seen <%= time_ago(@statement.first_seen_at) %></div></div>
+</div>
+<div class="panel"><pre class="sql"><%= @statement.sql %></pre>
+  <% if @statement.location %><div class="muted mono" style="margin-top: 8px">Issued from <%= @statement.location %></div><% end %>
+</div>
+<div class="tiles">
+  <div class="tile"><div class="label">Calls</div><div class="value"><%= fmt_rpm(@stats[:rpm]) %></div><div class="hint"><%= fmt_count(@stats[:count]) %> total</div></div>
+  <div class="tile"><div class="label">Avg</div><div class="value"><%= fmt_ms(@stats[:avg]) %></div></div>
+  <div class="tile"><div class="label">p95 / p99</div><div class="value"><%= fmt_ms(@overall[:p95]) %></div><div class="hint">p99 <%= fmt_ms(@overall[:p99]) %></div></div>
+  <div class="tile"><div class="label">Max</div><div class="value"><%= fmt_ms(@stats[:max]) %></div></div>
+  <div class="tile"><div class="label">Total time</div><div class="value"><%= fmt_ms(@stats[:total]) %></div></div>
+  <div class="tile"><div class="label">Calls / request</div><div class="value"><%= fmt_num(@stats[:calls_per_tx]) %></div><div class="hint">max <%= @stats[:max_per_tx] %> <%= tag.span("N+1", class: "badge nplus1") if @stats[:n_plus_one] %></div></div>
+  <div class="tile"><div class="label">Slow executions</div><div class="value"><%= fmt_count(@stats[:slow]) %></div></div>
+</div>
+<div class="grid two">
+  <div class="panel"><div class="panel-head"><h2>Latency</h2></div>
+    <%= chart(type: "line", series: [
+      { label: "p50", data: @percentiles[:p50], color: "#22c55e" },
+      { label: "p95", data: @percentiles[:p95], color: "#f59e0b" },
+      { label: "p99", data: @percentiles[:p99], color: "#ef4444" },
+      { label: "max", data: @series[:max], color: "#94a3b8" }]) %>
+  </div>
+  <div class="panel"><div class="panel-head"><h2>Calls per minute</h2></div>
+    <%= chart(type: "area", unit: "rpm", series: [{ label: "Calls", data: @series[:calls], color: "#ef4444" }]) %>
+  </div>
+  <div class="panel"><div class="panel-head"><h2>Latency distribution</h2></div>
+    <%= chart(type: "bar", x: "category", unit: "count", labels: @histogram[:labels], series: [{ label: "Executions", data: @histogram[:counts], color: "#ef4444" }]) %>
+  </div>
+  <div class="panel"><div class="panel-head"><h2>Max calls in one request</h2></div>
+    <%= chart(type: "line", unit: "count", series: [{ label: "Max per request", data: @series[:max_per_tx], color: "#f59e0b" }]) %>
+  </div>
+</div>
+<%= render "slow_queries/plan", plan: @plan %>
+<div class="panel">
+  <div class="panel-head"><h2>Called by</h2></div>
+  <table data-controller="table-sort">
+    <thead><tr><th>Transaction</th><th class="num">Calls</th><th class="num">Calls / request</th><th class="num">Max / request</th><th class="num">Avg</th><th class="num">Max</th><th class="num">Total</th></tr></thead>
+    <tbody>
+      <% @callers.each do |c| %>
+        <tr><td><%= tx_link(c[:type], c[:name]) %></td><td class="num"><%= fmt_count(c[:count]) %></td><td class="num"><%= fmt_num(c[:calls_per_tx]) %></td><td class="num"><%= c[:max_per_tx] %></td><td class="num"><%= fmt_ms(c[:avg]) %></td><td class="num"><%= fmt_ms(c[:max]) %></td><td class="num"><%= fmt_ms(c[:total]) %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+<% if @samples.any? %>
+<div class="panel">
+  <div class="panel-head"><h2>Slow samples</h2></div>
+  <table data-controller="table-sort">
+    <thead><tr><th>When</th><th>Transaction</th><th>Called from</th><th class="num">Duration</th></tr></thead>
+    <tbody>
+      <% @samples.each do |q| %>
+        <tr><td data-sort-value="<%= q.ts.to_f %>"><%= link_to q.ts.strftime("%H:%M:%S"), app_slow_query_path(current_app, q, **range_params) %></td><td><%= tx_link(q.tx_type, q.tx_name) %></td><td class="mono muted"><%= q.location %></td><td class="num"><%= fmt_ms(q.duration) %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+<% end %>

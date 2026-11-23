@@ -1,0 +1,30 @@
+<% content_for :title, "Deployments" %>
+<% content_for :crumb, "Deployments" %>
+<% content_for :no_range, "1" %>
+<div class="page-head"><div><h1>Deployments</h1><div class="sub">A deployment is recorded the first time an agent reports a new revision. Compared 30 min before vs after.</div></div></div>
+<div class="panel">
+  <div class="table-wrap">
+  <table data-controller="table-sort">
+    <thead><tr><th>Deployed</th><th>Revision</th><th class="num">Avg before → after</th><th class="num">p95 before → after</th><th class="num">Error rate</th><th class="num">Apdex</th><th></th></tr></thead>
+    <tbody>
+      <% @deployments.each do |d| %>
+        <% c = @comparisons[d.id] %>
+        <tr>
+          <td data-sort-value="<%= d.deployed_at.to_i %>"><%= d.deployed_at.strftime("%b %-d %H:%M UTC") %> <span class="muted">(<%= time_ago(d.deployed_at) %>)</span></td>
+          <td class="mono"><%= d.revision %></td>
+          <% if c&.ready? %>
+            <td class="num"><%= fmt_ms(c.before.summary[:avg]) %> → <%= fmt_ms(c.after.summary[:avg]) %> <%= render "deployments/delta", before: c.before.summary[:avg], after: c.after.summary[:avg], kind: :ms %></td>
+            <td class="num"><%= fmt_ms(c.before.summary[:p95]) %> → <%= fmt_ms(c.after.summary[:p95]) %> <%= render "deployments/delta", before: c.before.summary[:p95], after: c.after.summary[:p95], kind: :ms %></td>
+            <td class="num"><%= render "deployments/delta", before: c.before.summary[:error_rate], after: c.after.summary[:error_rate], kind: :pct %></td>
+            <td class="num"><%= render "deployments/delta", before: c.before.summary[:apdex], after: c.after.summary[:apdex], kind: :apdex, lower_is_better: false %></td>
+          <% else %>
+            <td colspan="4" class="muted">not enough data on both sides<%= " yet" if c && c.after.summary[:count].zero? %></td>
+          <% end %>
+          <td class="num"><%= link_to "Compare →", app_deployment_path(current_app, d) %></td>
+        </tr>
+      <% end %>
+      <% if @deployments.empty? %><tr><td colspan="7" class="empty">No deployments yet. Agents report a revision from RUBY_APM_REVISION, a REVISION file or git.</td></tr><% end %>
+    </tbody>
+  </table>
+  </div>
+</div>

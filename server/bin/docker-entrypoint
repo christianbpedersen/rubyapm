@@ -1,0 +1,8 @@
+#!/bin/bash -e
+# Before the web server starts: create/migrate the database and make sure the
+# bootstrap app (the API key agents report with) exists.
+if [[ "$*" == *"rails server"* ]]; then
+  ./bin/rails db:prepare
+  ./bin/rails rubyapm:bootstrap
+fi
+exec "$@"

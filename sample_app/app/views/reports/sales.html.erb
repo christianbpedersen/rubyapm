@@ -1,0 +1,3 @@
+<h1>Sales report</h1>
+<h2>Views by country</h2><ul><% @by_country.each do |c, n| %><li><%= c %>: <%= n %></li><% end %></ul>
+<h2>Revenue by category</h2><ul><% @revenue.each do |c, n| %><li><%= c %>: <%= number_to_currency(n / 100.0) %></li><% end %></ul>

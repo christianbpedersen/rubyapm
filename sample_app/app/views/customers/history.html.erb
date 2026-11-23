@@ -1,0 +1,5 @@
+<h1><%= @customer.name %></h1>
+<% @orders.each do |o| %>
+  <h3>Order <%= o.id %> (<%= o.status %>)</h3>
+  <ul><% o.line_items.each do |li| %><li><%= li.product.name %> × <%= li.quantity %></li><% end %></ul>
+<% end %>

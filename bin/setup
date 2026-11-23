@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# First-time setup: gems, databases (Postgres on the default socket) and the
+# Shopwell seed data. Safe to re-run.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+command -v rbenv >/dev/null && export PATH="$HOME/.rbenv/shims:$PATH"
+ruby -e 'exit(Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.2") ? 0 : 1)' || { echo "Ruby 3.2+ required (see .ruby-version)"; exit 1; }
+pg_isready -q || { echo "PostgreSQL is not running"; exit 1; }
+
+# Not db:prepare: in development it also initializes the test database and
+# then seeds the development one, even when that already has data.
+echo "== server";     (cd server && bundle install --quiet && bin/rails db:create db:migrate)
+echo "== sample app"; (cd sample_app && bundle install --quiet && bin/rails db:create db:migrate)
+if [[ $(cd sample_app && bin/rails runner 'print Product.count' 2>/dev/null) == "0" ]]; then
+  echo "== seeding Shopwell"; (cd sample_app && bin/rails db:seed)
+fi
+echo "Done. Next: bin/start && bin/start-simulation, then open http://localhost:4400"

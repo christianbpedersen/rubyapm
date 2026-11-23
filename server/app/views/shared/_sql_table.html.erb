@@ -1,0 +1,33 @@
+<div class="table-wrap">
+<table data-controller="table-sort">
+  <thead>
+    <tr>
+      <th>Statement</th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("Total time", "total", default: "total") : "Total time" %></th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("Calls", "count") : "Calls" %></th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("Avg", "avg") : "Avg" %></th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("Max", "max") : "Max" %></th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("Calls / request", "max_per_tx") : "Calls / request" %></th>
+      <th class="num">Slow</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% statements.each do |s| %>
+      <tr>
+        <td class="sql-cell">
+          <%= link_to sql_snippet(s[:sql]), app_sql_path(current_app, s[:key], **range_params) %>
+          <% if s[:n_plus_one] %> <span class="badge nplus1" title="Ran <%= s[:max_per_tx] %> times in a single request">N+1</span><% end %>
+          <% if s[:location] %><div class="muted mono" style="font-size:11px"><%= s[:location] %></div><% end %>
+        </td>
+        <td class="num"><%= fmt_ms(s[:total]) %></td>
+        <td class="num"><%= fmt_count(s[:count]) %></td>
+        <td class="num"><%= fmt_ms(s[:avg]) %></td>
+        <td class="num"><%= fmt_ms(s[:max]) %></td>
+        <td class="num" title="max in one request: <%= s[:max_per_tx] %>"><%= fmt_num(s[:calls_per_tx]) %> <span class="muted">(max <%= s[:max_per_tx] %>)</span></td>
+        <td class="num"><%= s[:slow].to_i.positive? ? tag.span(fmt_count(s[:slow]), class: "badge warn") : "0" %></td>
+      </tr>
+    <% end %>
+    <% if statements.empty? %><tr><td colspan="7" class="empty">No SQL recorded in this window.</td></tr><% end %>
+  </tbody>
+</table>
+</div>

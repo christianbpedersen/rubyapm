@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Times the main dashboard pages for an app across ranges: bin/page-timings APP_ID [ranges...]
+APP=${1:?app id}; shift
+RANGES=${*:-"1h 24h 3d 7d"}
+BASE=${BASE:-http://localhost:4400}
+TX=$(psql -h /tmp -d newfenic_development -Atc "select name from tx_rollups where app_id=$APP group by name order by sum(total) desc limit 1" | python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.stdin.read().strip()))')
+KEY=$(psql -h /tmp -d newfenic_development -Atc "select key from sql_rollups where app_id=$APP group by key order by sum(total) desc limit 1")
+printf "%-14s" page; for r in $RANGES; do printf "%8s" "$r"; done; echo
+for page in "" /transactions "/transaction?type=web&name=$TX" /database "/sql/$KEY" /slow-queries /graphql /external /code /errors; do
+  printf "%-14s" "${page%%\?*}"; [[ -z $page ]] && printf "\b\b\b\b\b\b\b\b\b\b\b\b\b\boverview      "
+  for r in $RANGES; do
+    sep="?"; [[ $page == *\?* ]] && sep="&"
+    t=$(curl -s -o /dev/null -w '%{http_code} %{time_total}' "$BASE/apps/$APP$page${sep}range=$r")
+    code=${t%% *}; secs=${t##* }
+    [[ $code == 200 ]] && printf "%7.2fs" "$secs" || printf "%8s" "E$code"
+  done; echo
+done

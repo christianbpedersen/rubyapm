@@ -1,0 +1,33 @@
+<div class="table-wrap">
+<table data-controller="table-sort">
+  <thead>
+    <tr>
+      <th><%= local_assigns[:sortable] ? sortable("Transaction", "name") : "Transaction" %></th>
+      <th><%= local_assigns[:sortable] ? sortable("Time consumed", "total", default: "total") : "Time consumed" %></th>
+      <th>Layers</th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("Throughput", "rpm") : "Throughput" %></th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("Avg", "avg") : "Avg" %></th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("p95", "p95") : "p95" %></th>
+      <th class="num">Max</th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("Errors", "errors") : "Errors" %></th>
+      <th class="num"><%= local_assigns[:sortable] ? sortable("Apdex", "apdex") : "Apdex" %></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% transactions.each do |t| %>
+      <tr>
+        <td><%= tx_link(t[:type], t[:name]) %></td>
+        <td><%= share_bar(t[:share]) %></td>
+        <td><%= layer_bar(t[:layers]) %></td>
+        <td class="num"><%= fmt_rpm(t[:rpm]) %></td>
+        <td class="num"><%= fmt_ms(t[:avg]) %></td>
+        <td class="num"><%= fmt_ms(t[:p95]) %></td>
+        <td class="num"><%= fmt_ms(t[:max]) %></td>
+        <td class="num"><%= t[:errors].positive? ? tag.span(fmt_pct(t[:error_rate], 2), class: "badge bad") : "0" %></td>
+        <td class="num"><%= apdex_badge(t[:apdex]) %></td>
+      </tr>
+    <% end %>
+    <% if transactions.empty? %><tr><td colspan="9" class="empty">No transactions in this window.</td></tr><% end %>
+  </tbody>
+</table>
+</div>

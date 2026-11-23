@@ -1,0 +1,64 @@
+<% content_for :title, "Alerts" %>
+<% content_for :crumb, "Alerts" %>
+<% content_for :no_range, "1" %>
+<div class="page-head">
+  <div><h1>Alerts</h1><div class="sub">Policies are checked every minute against the last complete minutes of data</div></div>
+  <%= link_to "New alert", new_app_alert_path(current_app), class: "button" %>
+</div>
+<% @open.each do |i| %>
+  <div class="callout bad">
+    <strong>Open: <%= i.alert_policy.name %></strong> since <%= time_ago(i.opened_at) %> —
+    now <%= i.alert_policy.format_value(i.last_value) %>, worst <%= i.alert_policy.format_value(i.peak_value) %>
+    (threshold <%= i.alert_policy.comparison %> <%= i.alert_policy.format_value(i.threshold) %>) ·
+    <%= link_to "investigate →", incident_drilldown_path(i) %>
+  </div>
+<% end %>
+<div class="panel">
+  <div class="panel-head"><h2>Policies</h2></div>
+  <div class="table-wrap">
+  <table data-controller="table-sort">
+    <thead><tr><th>Name</th><th>Condition</th><th class="num">Current</th><th>Status</th><th>Notify</th><th></th></tr></thead>
+    <tbody>
+      <% @policies.each do |p| %>
+        <% open = @open.find { |i| i.alert_policy_id == p.id } %>
+        <tr>
+          <td><strong><%= p.name %></strong></td>
+          <td class="muted"><%= p.condition_text %></td>
+          <td class="num"><%= p.format_value(p.last_value) %></td>
+          <td>
+            <% if !p.enabled %><span class="badge">disabled</span>
+            <% elsif open %><span class="badge bad">incident</span>
+            <% elsif p.last_evaluated_at %><span class="badge good">ok</span>
+            <% else %><span class="badge">pending</span><% end %>
+          </td>
+          <td class="muted"><%= p.webhook_url.present? ? URI.parse(p.webhook_url).host : "dashboard only" %></td>
+          <td class="num"><%= link_to "Edit", edit_app_alert_path(current_app, p) %></td>
+        </tr>
+      <% end %>
+      <% if @policies.empty? %><tr><td colspan="6" class="empty">No alert policies.</td></tr><% end %>
+    </tbody>
+  </table>
+  </div>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Incident history</h2></div>
+  <div class="table-wrap">
+  <table data-controller="table-sort">
+    <thead><tr><th>Opened</th><th>Policy</th><th class="num">Duration</th><th class="num">At open</th><th class="num">Worst</th><th>Notification</th><th></th></tr></thead>
+    <tbody>
+      <% @incidents.each do |i| %>
+        <tr style="<%= 'background: var(--accent-soft)' if i.id == @highlight %>">
+          <td data-sort-value="<%= i.opened_at.to_i %>"><%= i.opened_at.strftime("%b %-d %H:%M UTC") %></td>
+          <td><%= i.alert_policy.name %> <%= tag.span("open", class: "badge bad") if i.open? %></td>
+          <td class="num" data-sort-value="<%= i.duration.to_i %>"><%= distance_of_time_in_words(i.duration) %></td>
+          <td class="num"><%= i.alert_policy.format_value(i.opened_value) %></td>
+          <td class="num"><%= i.alert_policy.format_value(i.peak_value) %></td>
+          <td class="muted"><%= i.notify_error ? tag.span(i.notify_error, class: "badge warn") : (i.alert_policy.webhook_url.present? ? "sent" : "–") %></td>
+          <td class="num"><%= link_to "Investigate →", incident_drilldown_path(i) %></td>
+        </tr>
+      <% end %>
+      <% if @incidents.empty? %><tr><td colspan="7" class="empty">No incidents yet.</td></tr><% end %>
+    </tbody>
+  </table>
+  </div>
+</div>

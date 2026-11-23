@@ -1,0 +1,45 @@
+<% content_for :title, "GraphQL" %>
+<% content_for :crumb, "GraphQL" %>
+<div class="page-head"><div><h1>GraphQL</h1><div class="sub">Operations are named transactions (<code>GraphQL/&lt;type&gt;/&lt;OperationName&gt;</code>); resolvers are timed per field</div></div></div>
+<% if @operations.empty? %>
+  <div class="panel empty">No GraphQL operations recorded. The agent instruments every <code>GraphQL::Schema</code> automatically when graphql-ruby is loaded.</div>
+<% else %>
+<%= render "shared/tiles", summary: @summary, noun: "operations" %>
+<% palette = %w[#e879f9 #6366f1 #f59e0b #14b8a6 #ef4444 #3b82f6] %>
+<div class="grid two">
+  <div class="panel"><div class="panel-head"><h2>Operation time by layer</h2><span class="hint">avg ms per operation</span></div>
+    <%= chart(type: "area", stacked: true, series: layer_series(@series[:layers])) %></div>
+  <div class="panel"><div class="panel-head"><h2>Throughput by operation</h2></div>
+    <%= chart(type: "line", unit: "rpm", series: @op_series.each_with_index.map { |(n, d), i| { label: n.delete_prefix("GraphQL/"), data: d, color: palette[i % 6] } }) %></div>
+  <div class="panel"><div class="panel-head"><h2>Resolver time</h2><span class="hint">exclusive ms per minute, slowest fields</span></div>
+    <%= chart(type: "area", stacked: true, series: @field_series.each_with_index.map { |(n, d), i| { label: n.delete_prefix("GraphQL/field/"), data: d, color: palette[i % 6] } }) %></div>
+  <div class="panel"><div class="panel-head"><h2>Execution phases</h2></div>
+    <table data-controller="table-sort"><thead><tr><th>Phase</th><th class="num">Calls</th><th class="num">Avg</th><th class="num">Max</th><th>Share</th></tr></thead><tbody>
+      <% @phases.each do |p| %><tr><td><%= segment_link(p[:name]) %></td><td class="num"><%= fmt_rpm(p[:rpm]) %></td><td class="num"><%= fmt_ms(p[:avg]) %></td><td class="num"><%= fmt_ms(p[:max]) %></td><td><%= share_bar(p[:share], "#e879f9") %></td></tr><% end %>
+    </tbody></table>
+  </div>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Operations</h2></div>
+  <%= render "shared/tx_table", transactions: @operations %>
+</div>
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Slowest fields</h2><span class="hint">by exclusive resolver time</span></div>
+    <table data-controller="table-sort"><thead><tr><th>Field</th><th class="num">Resolves</th><th class="num">Avg</th><th class="num">Max</th><th>Share</th><th class="num">Operations</th></tr></thead><tbody>
+      <% @resolvers.first(40).each do |f| %>
+        <tr><td><%= segment_link(f[:name], f[:name].delete_prefix("GraphQL/field/")) %></td><td class="num"><%= fmt_rpm(f[:rpm]) %></td><td class="num"><%= fmt_ms(f[:avg]) %></td><td class="num"><%= fmt_ms(f[:max]) %></td><td><%= share_bar(f[:share], "#e879f9") %></td><td class="num"><%= f[:callers] %></td></tr>
+      <% end %>
+    </tbody></table>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Dataloader sources</h2><span class="hint">batched loads</span></div>
+    <table data-controller="table-sort"><thead><tr><th>Source</th><th class="num">Batches</th><th class="num">Avg</th><th class="num">Max</th></tr></thead><tbody>
+      <% @sources.each do |f| %>
+        <tr><td><%= segment_link(f[:name], f[:name].delete_prefix("GraphQL/Source/")) %></td><td class="num"><%= fmt_rpm(f[:rpm]) %></td><td class="num"><%= fmt_ms(f[:avg]) %></td><td class="num"><%= fmt_ms(f[:max]) %></td></tr>
+      <% end %>
+      <% if @sources.empty? %><tr><td colspan="4" class="empty">No GraphQL::Dataloader sources.</td></tr><% end %>
+    </tbody></table>
+  </div>
+</div>
+<% end %>

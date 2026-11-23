@@ -1,0 +1,28 @@
+<% content_for :title, @name %>
+<% content_for :crumb, @name %>
+<div class="page-head">
+  <div><h1 class="mono"><%= @name %></h1><div class="sub"><%= layer_dot(@summary[:category]) %><%= category_label(@summary[:category]) %></div></div>
+</div>
+<div class="tiles">
+  <div class="tile"><div class="label">Calls</div><div class="value"><%= fmt_rpm(@summary[:rpm]) %></div><div class="hint"><%= fmt_count(@summary[:count]) %> total</div></div>
+  <div class="tile"><div class="label">Avg</div><div class="value"><%= fmt_ms(@summary[:avg]) %></div></div>
+  <div class="tile"><div class="label">Max</div><div class="value"><%= fmt_ms(@summary[:max]) %></div></div>
+  <div class="tile"><div class="label">Total time</div><div class="value"><%= fmt_ms(@summary[:total]) %></div><div class="hint">exclusive <%= fmt_ms(@summary[:excl]) %></div></div>
+</div>
+<div class="grid two">
+  <div class="panel"><div class="panel-head"><h2>Duration</h2></div>
+    <%= chart(type: "line", series: [{ label: "avg", data: @series[:avg], color: layer_meta(@summary[:category])[:color] }, { label: "max", data: @series[:max], color: "#94a3b8" }]) %></div>
+  <div class="panel"><div class="panel-head"><h2>Calls per minute</h2></div>
+    <%= chart(type: "area", unit: "rpm", series: [{ label: "Calls", data: @series[:calls], color: layer_meta(@summary[:category])[:color] }]) %></div>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Called by</h2></div>
+  <table data-controller="table-sort">
+    <thead><tr><th>Transaction</th><th class="num">Calls</th><th class="num">Calls / request</th><th class="num">Avg</th><th class="num">Max</th><th class="num">Total</th></tr></thead>
+    <tbody>
+      <% @callers.each do |c| %>
+        <tr><td><%= tx_link(c[:type], c[:name]) %></td><td class="num"><%= fmt_count(c[:count]) %></td><td class="num"><%= fmt_num(c[:calls_per_tx], 2) %></td><td class="num"><%= fmt_ms(c[:avg]) %></td><td class="num"><%= fmt_ms(c[:max]) %></td><td class="num"><%= fmt_ms(c[:total]) %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

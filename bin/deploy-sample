@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Redeploys the Shopwell sample under a new revision so RubyAPM records a
+# deployment. --regression makes product pages noticeably slower.
+#   bin/deploy-sample                 # a harmless deploy
+#   bin/deploy-sample --regression    # a bad one
+#   bin/deploy-sample --rollback      # back to normal under another revision
+set -euo pipefail
+cd "$(dirname "$0")/.."
+source bin/lib.sh
+
+REGRESSION=0
+SUFFIX=""
+case "${1:-}" in
+  --regression) REGRESSION=1; SUFFIX="-slowrecs" ;;
+  --rollback) SUFFIX="-rollback" ;;
+esac
+REV="$(git rev-parse --short HEAD)-$(date +%H%M%S)$SUFFIX"
+
+old_pid=$(lsof -nP -t -iTCP:4500 -sTCP:LISTEN 2>/dev/null | head -1 || true)
+stop_port 4500 || { echo "could not stop the running sample app" >&2; exit 1; }
+rm -f tmp-sample.pid log/sample.pid
+RUBY_APM_REVISION=$REV SHOPWELL_REGRESSION=$REGRESSION bin/start | grep -E "sample|4500" || true
+
+new_pid=$(lsof -nP -t -iTCP:4500 -sTCP:LISTEN 2>/dev/null | head -1 || true)
+if [[ -z $new_pid || $new_pid == "$old_pid" ]]; then
+  echo "deploy failed: no new process listens on 4500 (see log/sample.log)" >&2
+  exit 1
+fi
+echo "deployed $REV (regression=$REGRESSION), pid $new_pid"

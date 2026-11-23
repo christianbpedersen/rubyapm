@@ -1,0 +1,78 @@
+# RubyAPM on nuc2, served at https://chirpbin.com/apm. Lives in
+# ~/chirpbin.com/apm next to the other chirpbin apps; Caddy in ../proxy
+# terminates HTTPS and sends /apm/* to chirpbin-apm-web over the shared
+# "chirpbin" network. The app mounts itself under RAILS_RELATIVE_URL_ROOT.
+#
+# Deployed with bin/deploy-chirpbin from the RubyAPM repo, which copies
+# agent/ and server/ here and runs `docker compose up -d --build`.
+
+# 127.0.0.11 resolves compose service names (db); public DNS as fallback.
+x-app-dns: &app-dns
+  dns:
+    - 127.0.0.11
+    - ${DOCKER_DNS:-8.8.8.8}
+    - ${DOCKER_DNS2:-8.8.4.4}
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: newfenic
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env}
+      POSTGRES_DB: newfenic
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U newfenic -d newfenic"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  web:
+    <<: *app-dns
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: chirpbin-apm
+    container_name: chirpbin-apm-web
+    env_file: .env
+    environment:
+      RAILS_ENV: production
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
+      DATABASE_URL: postgres://newfenic:${DATABASE_PASSWORD}@db:5432/newfenic
+      RAILS_RELATIVE_URL_ROOT: /apm
+      RUBY_APM_BASE_URL: ${RUBY_APM_BASE_URL:-https://chirpbin.com/apm}
+      RUBY_APM_AUTO_REGISTER: "0"
+      # Shared login (../auth): browsers go to AUTH_URL, tokens are verified
+      # server-to-server at AUTH_INTERNAL_URL over the chirpbin network.
+      AUTH_URL: ${AUTH_URL:-https://auth.chirpbin.com}
+      AUTH_INTERNAL_URL: ${AUTH_INTERNAL_URL:-http://chirpbin-auth-web:3000}
+    ports:
+      # 3600 verified free; 3100 amexalert, 3200 agent, 3300 docs, 3400 auth, 3500 protect.
+      - "${WEB_PORT:-3600}:3000"
+    networks:
+      - app
+      - chirpbin
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+networks:
+  app:
+    driver: bridge
+  chirpbin:
+    external: true
+    name: chirpbin
+
+volumes:
+  pg_data:

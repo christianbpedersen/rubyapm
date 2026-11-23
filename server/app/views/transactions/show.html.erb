@@ -1,0 +1,107 @@
+<% content_for :title, @name %>
+<% content_for :crumb, @name %>
+<div class="page-head">
+  <div>
+    <h1 class="mono"><%= @name %></h1>
+    <div class="sub"><%= type_badge(@type) %> <%= link_to "← all transactions", app_transactions_path(current_app, **range_params, type: @type) %>
+      · <%= link_to "Alert on this", new_app_alert_path(current_app, tx_name: @name, tx_type: @type) %></div>
+  </div>
+</div>
+
+<%= render "shared/tiles", summary: @summary, noun: (@type == "job" ? "runs" : "requests") %>
+
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Time by layer</h2><span class="hint">avg ms per request</span></div>
+    <%= chart(type: "area", stacked: true, series: layer_series(@series[:layers])) %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Time by segment</h2><span class="hint">exclusive ms per request, top segments</span></div>
+    <% palette = %w[#6366f1 #f59e0b #ef4444 #14b8a6 #3b82f6 #a855f7 #84cc16 #ec4899] %>
+    <%= chart(type: "area", stacked: true, height: 236, series: @segment_series.each_with_index.map { |(n, d), i| { label: n, data: d, color: palette[i % 8] } }) %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Throughput</h2><span class="hint">per minute</span></div>
+    <%= chart(type: "area", unit: "rpm", series: [{ label: "Throughput", data: @series[:throughput], color: "#6366f1" }]) %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Percentiles</h2></div>
+    <%= chart(type: "line", series: [
+      { label: "p50", data: @percentiles[:p50], color: "#22c55e" },
+      { label: "p95", data: @percentiles[:p95], color: "#f59e0b" },
+      { label: "p99", data: @percentiles[:p99], color: "#ef4444" }]) %>
+  </div>
+</div>
+
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Where the time goes</h2></div>
+    <%= render "shared/layer_table", summary: @summary %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Latency distribution</h2><span class="hint">requests per latency bucket</span></div>
+    <%= chart(type: "bar", x: "category", height: 262, unit: "count", labels: @histogram[:labels], series: [{ label: "Requests", data: @histogram[:counts], color: "#6366f1" }]) %>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Breakdown</h2><span class="hint">every segment in this transaction; exclusive time excludes children</span></div>
+  <div class="table-wrap">
+  <table data-controller="table-sort">
+    <thead><tr><th>Segment</th><th>Layer</th><th>% of time</th><th class="num">ms / request</th><th class="num">Calls / request</th><th class="num">Avg call</th><th class="num">Max call</th></tr></thead>
+    <tbody>
+      <% @segments.each do |s| %>
+        <tr>
+          <td><%= segment_link(s[:name]) %></td>
+          <td><%= layer_dot(s[:category]) %><%= category_label(s[:category]) %></td>
+          <td><%= share_bar(s[:share], layer_meta(s[:category])[:color]) %></td>
+          <td class="num"><%= fmt_ms(s[:ms_per_tx]) %></td>
+          <td class="num"><%= fmt_num(s[:calls_per_tx], 2) %></td>
+          <td class="num"><%= fmt_ms(s[:avg]) %></td>
+          <td class="num"><%= fmt_ms(s[:max]) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>SQL in this transaction</h2><span class="hint">N+1 = same statement 10+ times in one request</span></div>
+  <%= render "shared/sql_table", statements: @sql %>
+</div>
+
+<% if @slow_queries.any? %>
+<div class="panel">
+  <div class="panel-head"><h2>Slow query samples</h2></div>
+  <table data-controller="table-sort">
+    <thead><tr><th>When</th><th>Statement</th><th>Called from</th><th class="num">Duration</th></tr></thead>
+    <tbody>
+      <% @slow_queries.each do |q| %>
+        <tr>
+          <td data-sort-value="<%= q.ts.to_f %>"><%= link_to q.ts.strftime("%H:%M:%S"), app_slow_query_path(current_app, q, **range_params) %></td>
+          <td class="sql-cell"><%= sql_snippet(@statements[q.key]&.sql, 110) %></td>
+          <td class="mono muted"><%= q.location %></td>
+          <td class="num"><%= fmt_ms(q.duration) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+<% end %>
+
+<div class="grid two">
+  <div class="panel">
+    <div class="panel-head"><h2>Slowest traces</h2></div>
+    <%= render "shared/traces_table", traces: @traces, hide_name: true %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Errors</h2></div>
+    <table data-controller="table-sort"><tbody>
+      <% @errors.each do |e| %>
+        <tr><td><%= link_to e[:group].error_class, app_error_path(current_app, e[:group].fingerprint, **range_params), class: "mono" %><div class="muted"><%= truncate(e[:group].message, length: 100) %></div></td><td class="num"><%= fmt_count(e[:count]) %></td></tr>
+      <% end %>
+      <% if @errors.empty? %><tr><td class="empty">No errors in this window.</td></tr><% end %>
+    </tbody></table>
+  </div>
+</div>

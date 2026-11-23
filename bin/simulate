@@ -1,0 +1,111 @@
+#!/usr/bin/env ruby
+# Load generator for the Shopwell sample app.
+#
+#   bin/simulate                      # ~15 req/s until interrupted
+#   bin/simulate --rps 40 --minutes 10
+#   bin/simulate --incident-every 15  # stage a slow-payments incident every 15 min
+require "net/http"
+require "json"
+require "optparse"
+
+$stdout.sync = true
+
+opts = { rps: 15.0, minutes: nil, base: "http://localhost:4500", incident_every: 20, threads: 12 }
+OptionParser.new do |o|
+  o.on("--rps N", Float) { |v| opts[:rps] = v }
+  o.on("--minutes N", Float) { |v| opts[:minutes] = v }
+  o.on("--base URL") { |v| opts[:base] = v }
+  o.on("--threads N", Integer) { |v| opts[:threads] = v }
+  o.on("--incident-every MIN", Float, "0 disables") { |v| opts[:incident_every] = v }
+end.parse!
+
+GQL = {
+  "ProductList" => "query ProductList($limit: Int) { products(limit: $limit) { id name priceCents category { name } averageRating reviews { rating customer { name } } } }",
+  "ProductDetail" => "query ProductDetail($id: ID!) { product(id: $id) { id name liveStock category { name } recommendations { id name } reviews { rating body customer { name country } } } }",
+  "CustomerOrders" => "query CustomerOrders($id: ID!) { customer(id: $id) { name orders { id status lineItems { quantity product { name category { name } } } } } }",
+  "TopCustomers" => "query TopCustomers { topCustomers { name country } }",
+  "CreateReview" => "mutation CreateReview($p: ID!, $c: ID!, $r: Int!) { createReview(productId: $p, customerId: $c, rating: $r, body: \"Simulated\") { id } }"
+}.freeze
+
+def gql(name, vars = {}) = [:post, "/graphql", { query: GQL[name], operationName: name, variables: vars }]
+
+# [weight, request builder]
+MIX = [
+  [16, -> { [:get, "/products?page=#{rand(50)}"] }],
+  [22, -> { [:get, "/products/#{rand(1..2000)}"] }],
+  [10, -> { [:get, "/"] }],
+  [6, -> { [:get, "/search?q=#{%w[lovely Product 12 thing 9].sample}"] }],
+  [7, -> { [:post, "/orders", {}] }],
+  [4, -> { [:get, "/orders"] }],
+  [3, -> { [:get, "/orders/#{rand(1..20_000)}"] }],
+  [2, -> { [:get, "/reports/sales"] }],
+  [4, -> { [:get, "/reports/live"] }],
+  [4, -> { [:get, "/customers/#{rand(1..5000)}/history"] }],
+  [8, -> { [:get, "/api/products"] }],
+  [6, -> { [:get, "/api/products/#{rand(1..2100)}"] }], # some 404s
+  [2, -> { [:post, "/api/inventory/sync", {}] }],
+  [6, -> { gql("ProductList", limit: [10, 20, 40].sample) }],
+  [5, -> { gql("ProductDetail", id: rand(1..2000)) }],
+  [3, -> { gql("CustomerOrders", id: rand(1..5000)) }],
+  [1, -> { gql("TopCustomers") }],
+  [2, -> { gql("CreateReview", p: rand(1..2000), c: rand(1..5000), r: rand(1..5)) }]
+].freeze
+TOTAL = MIX.sum(&:first)
+
+def pick
+  r = rand(TOTAL)
+  MIX.each { |w, f| return f.call if (r -= w) < 0 }
+end
+
+uri = URI(opts[:base])
+stats = Hash.new(0)
+lock = Mutex.new
+deadline = opts[:minutes] && Time.now + opts[:minutes] * 60
+queue = SizedQueue.new(opts[:threads] * 4)
+stop = false
+trap("INT") { stop = true }
+
+workers = Array.new(opts[:threads]) do
+  Thread.new do
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.read_timeout = 30
+    while (job = queue.pop)
+      verb, path, body = job
+      begin
+        http.start unless http.started?
+        req = verb == :get ? Net::HTTP::Get.new(path) : Net::HTTP::Post.new(path, "Content-Type" => "application/json")
+        req.body = body.to_json if body
+        # Pretend a load balancer stamped the request, so queue time is measured.
+        req["X-Request-Start"] = "t=#{(Time.now.to_f * 1000).round}"
+        res = http.request(req)
+        lock.synchronize { stats[res.code] += 1 }
+      rescue StandardError => e
+        lock.synchronize { stats[e.class.name] += 1 }
+        http.finish rescue nil
+      end
+    end
+  end
+end
+
+next_incident = opts[:incident_every].positive? ? Time.now + opts[:incident_every] * 60 : nil
+started = Time.now
+last_report = Time.now
+interval = 1.0 / opts[:rps]
+until stop || (deadline && Time.now > deadline)
+  # Daily-ish wave so throughput charts are not flat: ±40% over 10 minutes.
+  wave = 1 + 0.4 * Math.sin((Time.now - started) / 600.0 * 2 * Math::PI)
+  queue << pick
+  if next_incident && Time.now > next_incident
+    Net::HTTP.post(URI("http://payments.localhost:4501/incident?seconds=120"), "") rescue nil
+    puts "[simulate] staged a 2 minute slow-payments incident"
+    next_incident = Time.now + opts[:incident_every] * 60
+  end
+  if Time.now - last_report > 30
+    lock.synchronize { puts "[simulate] #{Time.now.strftime('%H:%M:%S')} #{stats.sort.map { |k, v| "#{k}=#{v}" }.join(' ')}"; stats.clear }
+    last_report = Time.now
+  end
+  sleep interval / wave
+end
+opts[:threads].times { queue << nil }
+workers.each(&:join)
+puts "[simulate] done"

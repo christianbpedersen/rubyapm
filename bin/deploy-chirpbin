@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Deploys the RubyAPM server to nuc2 (https://chirpbin.com/apm).
+#   bin/deploy-chirpbin            # copy source, build on nuc2, restart
+# Requires `ssh nuc2`. Secrets live only in ~/chirpbin.com/apm/.env on nuc2.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+HOST=${DEPLOY_HOST:-nuc2}
+DIR=${DEPLOY_DIR:-/home/christianpedersen/chirpbin.com/apm}
+
+echo "== copying source to $HOST:$DIR"
+ssh "$HOST" "mkdir -p '$DIR' && rm -rf '$DIR/agent'"
+rsync -az --delete \
+  --exclude '.git' --exclude 'log/*' --exclude 'tmp/*' --exclude 'storage/*' --exclude '.DS_Store' --exclude '._*' \
+  --exclude 'config/master.key' --exclude 'test/' \
+  server "$HOST:$DIR/"
+rsync -az deploy/chirpbin/docker-compose.yml deploy/chirpbin/env.example .dockerignore "$HOST:$DIR/"
+
+echo "== building and starting on $HOST"
+ssh "$HOST" bash -s -- "$DIR" <<'REMOTE'
+set -euo pipefail
+cd "$1"
+if [ ! -f .env ]; then
+  umask 077
+  {
+    echo "SECRET_KEY_BASE=$(openssl rand -hex 64)"
+    echo "DATABASE_PASSWORD=$(openssl rand -hex 24)"
+    echo "RUBY_APM_BOOTSTRAP_APP=My App"
+    echo "RUBY_APM_BOOTSTRAP_API_KEY=nf_$(openssl rand -hex 20)"
+  } > .env
+  echo "created .env with fresh secrets"
+fi
+docker compose up -d --build
+for i in $(seq 1 90); do
+  curl -fsS -o /dev/null http://127.0.0.1:${WEB_PORT:-3600}/apm/up && break
+  sleep 2
+done
+curl -fsS -o /dev/null -w "local /apm/up: %{http_code}\n" http://127.0.0.1:${WEB_PORT:-3600}/apm/up
+docker compose ps --format '{{.Name}}\t{{.Status}}'
+REMOTE

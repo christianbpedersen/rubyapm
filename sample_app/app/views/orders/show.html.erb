@@ -1,0 +1,2 @@
+<h1>Order <%= @order.id %></h1>
+<ul><% @order.line_items.each do |li| %><li><%= li.quantity %> × <%= li.product.name %></li><% end %></ul>

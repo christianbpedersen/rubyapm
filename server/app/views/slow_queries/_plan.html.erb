@@ -1,0 +1,13 @@
+<div class="panel">
+  <div class="panel-head"><h2>Query plan</h2><span class="hint">EXPLAIN captured by the agent; literal values removed</span></div>
+  <% if plan.present? %>
+    <% plan.findings.each do |f| %>
+      <div class="callout <%= f.severity == :bad ? 'bad' : (f.severity == :info ? 'info' : '') %>"><strong><%= f.title %></strong> — <%= f.detail %></div>
+    <% end %>
+    <pre><%= plan.plan %></pre>
+  <% elsif plan.failed? %>
+    <div class="muted"><%= plan.plan %></div>
+  <% else %>
+    <div class="muted">No plan captured yet. Plans are taken for SELECTs slower than the agent's <code>slow_query_threshold</code>.</div>
+  <% end %>
+</div>

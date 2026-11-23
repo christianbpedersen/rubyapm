@@ -1,0 +1,31 @@
+<% content_for :title, @host %>
+<% content_for :crumb, @host %>
+<div class="page-head"><div><h1 class="mono"><%= @host %></h1><div class="sub"><%= link_to "← all services", app_external_path(current_app, **range_params) %></div></div></div>
+<% if @entry %>
+<div class="tiles">
+  <div class="tile"><div class="label">Calls</div><div class="value"><%= fmt_rpm(@entry[:rpm]) %></div><div class="hint"><%= fmt_count(@entry[:count]) %> total</div></div>
+  <div class="tile"><div class="label">Avg</div><div class="value"><%= fmt_ms(@entry[:avg]) %></div></div>
+  <div class="tile"><div class="label">Max</div><div class="value"><%= fmt_ms(@entry[:max]) %></div></div>
+  <div class="tile"><div class="label">Total time</div><div class="value"><%= fmt_ms(@entry[:total]) %></div></div>
+</div>
+<% palette = %w[#3b82f6 #f59e0b #ef4444 #14b8a6] %>
+<div class="grid two">
+  <div class="panel"><div class="panel-head"><h2>Response time</h2></div>
+    <%= chart(type: "line", series: @series.each_with_index.map { |(n, s), i| { label: n.split("/").last + " avg", data: s[:avg], color: palette[i % 4] } } + @series.map { |n, s| { label: n.split("/").last + " max", data: s[:max], color: "#94a3b8" } }) %></div>
+  <div class="panel"><div class="panel-head"><h2>Calls per minute</h2></div>
+    <%= chart(type: "area", unit: "rpm", series: @series.each_with_index.map { |(n, s), i| { label: n.split("/").last, data: s[:calls], color: palette[i % 4] } }) %></div>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2>Called by</h2></div>
+  <table data-controller="table-sort">
+    <thead><tr><th>Transaction</th><th>Verb</th><th class="num">Calls</th><th class="num">Calls / request</th><th class="num">Avg</th><th class="num">Max</th><th class="num">Total</th></tr></thead>
+    <tbody>
+      <% @callers.each do |c| %>
+        <tr><td><%= tx_link(c[:type], c[:name]) %></td><td><%= c[:segment].split("/").last %></td><td class="num"><%= fmt_count(c[:count]) %></td><td class="num"><%= fmt_num(c[:calls_per_tx], 2) %></td><td class="num"><%= fmt_ms(c[:avg]) %></td><td class="num"><%= fmt_ms(c[:max]) %></td><td class="num"><%= fmt_ms(c[:total]) %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+<% else %>
+  <div class="panel empty">No calls to <%= @host %> in this window.</div>
+<% end %>

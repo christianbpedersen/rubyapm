@@ -1,0 +1,5 @@
+<div class="card">
+  <strong><%= link_to product.name, product_path(product) %></strong>
+  <div><%= number_to_currency(product.price) %> · <%= product.category.name %></div>
+  <div>Rating: <%= product.average_rating || "–" %></div>
+</div>

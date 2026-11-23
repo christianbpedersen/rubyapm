@@ -1,0 +1,2 @@
+class IngestedBucket < ApplicationRecord
+end

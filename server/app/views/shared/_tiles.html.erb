@@ -1,0 +1,12 @@
+<%# summary: Metrics#summary hash %>
+<div class="tiles">
+  <div class="tile"><div class="label">Throughput</div><div class="value"><%= fmt_rpm(summary[:rpm]) %></div><div class="hint"><%= fmt_count(summary[:count]) %> <%= local_assigns[:noun] || "requests" %></div></div>
+  <div class="tile"><div class="label">Avg response</div><div class="value"><%= fmt_ms(summary[:avg]) %></div><div class="hint">max <%= fmt_ms(summary[:max]) %></div></div>
+  <div class="tile"><div class="label">p50 / p95</div><div class="value"><%= fmt_ms(summary[:p50]) %></div><div class="hint">p95 <%= fmt_ms(summary[:p95]) %></div></div>
+  <div class="tile"><div class="label">p99</div><div class="value"><%= fmt_ms(summary[:p99]) %></div><div class="hint">tail latency</div></div>
+  <div class="tile"><div class="label">Apdex</div><div class="value"><%= summary[:apdex] ? format("%.2f", summary[:apdex]) : "–" %></div><div class="hint">T = <%= fmt_ms(current_app.apdex_t) %></div></div>
+  <div class="tile"><div class="label">Error rate</div><div class="value"><%= fmt_pct(summary[:error_rate], 2) %></div><div class="hint"><%= fmt_count(summary[:errors]) %> errors</div></div>
+  <% if summary[:queue_avg].to_f > 0.05 %>
+    <div class="tile"><div class="label">Queue time</div><div class="value"><%= fmt_ms(summary[:queue_avg]) %></div><div class="hint">before Ruby picked it up</div></div>
+  <% end %>
+</div>
