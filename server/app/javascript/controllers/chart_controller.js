@@ -73,7 +73,7 @@ export default class extends Controller {
           // flatten everything else. Zero and sub-millisecond values sit on the
           // 1 ms floor; only powers of ten are labelled.
           y: cfg.log
-            ? { type: "logarithmic", stacked: cfg.stacked, min: 1, grid: { color: grid }, border: { display: false }, ticks: { color: fg, padding: 6, autoSkip: false, callback: (v) => (isPowerOfTen(v) ? format(v, unit) : ""), font: { size: 11 } } }
+            ? { type: "logarithmic", stacked: cfg.stacked, min: 1, grid: { color: (c) => (isPowerOfTen(c.tick.value) ? grid : "transparent") }, border: { display: false }, ticks: { color: fg, padding: 6, autoSkip: false, callback: (v) => (isPowerOfTen(v) ? format(v, unit) : ""), font: { size: 11 } } }
             : { stacked: cfg.stacked, beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { color: fg, maxTicksLimit: 4, padding: 6, callback: (v) => format(v, unit), font: { size: 11 } } },
         },
         plugins: {
