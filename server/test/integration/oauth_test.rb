@@ -58,6 +58,7 @@ class OauthTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select "h1", /Connect Claude/
+    assert_select "form[data-turbo=false][action='/oauth/authorize']" # cross-origin redirect: no Turbo fetch
 
     post "/oauth/authorize", params: authorize_params(client_id, challenge, decision: "approve")
     back = URI.parse(response.location)
