@@ -1,0 +1,58 @@
+<% content_for :title, "Single sign-on" %>
+<% base = "#{request.base_url}#{request.script_name}" %>
+<div class="page-head">
+  <div><h1>Single sign-on</h1><div class="sub">SAML 2.0, e.g. OneLogin. <%= link_to "Users", users_path %></div></div>
+  <span class="badge <%= SsoConfig.enabled? ? 'good' : '' %>"><%= SsoConfig.enabled? ? "Enabled" : "Off" %></span>
+</div>
+<% if @config.errors.any? %><div class="callout bad"><%= @config.errors.full_messages.to_sentence %></div><% end %>
+
+<div class="panel">
+  <h2>1. Add RubyAPM at your identity provider</h2>
+  <p class="muted">In OneLogin: Applications → Add App → <em>SAML Custom Connector (Advanced)</em>, then on its Configuration tab:</p>
+  <dl class="kv">
+    <dt>Audience (Entity ID)</dt><dd class="mono"><%= base %>/saml/metadata</dd>
+    <dt>Recipient</dt><dd class="mono"><%= base %>/saml/acs</dd>
+    <dt>ACS (Consumer) URL</dt><dd class="mono"><%= base %>/saml/acs</dd>
+    <dt>ACS URL Validator</dt><dd class="mono"><%= Regexp.escape("#{base}/saml/acs").then { |r| "^#{r}$" } %></dd>
+    <dt>Login URL</dt><dd class="mono"><%= base %>/saml/login</dd>
+    <dt>SAML signature element</dt><dd>Assertion or Both</dd>
+    <dt>NameID</dt><dd>Email. Optional parameters <span class="mono">firstName</span> and <span class="mono">lastName</span> fill in names.</dd>
+  </dl>
+  <p class="muted">Other IdPs can import <%= link_to "#{base}/saml/metadata", saml_metadata_path %>. Assign the app to the people who should get in.</p>
+</div>
+
+<%= form_with model: @config, url: sso_settings_path, method: :patch, class: "panel form-panel" do |f| %>
+  <h2>2. Connect the IdP</h2>
+  <p class="muted">Paste OneLogin's <em>Issuer URL</em> (SSO tab), which serves its metadata, or paste the metadata XML.</p>
+  <div class="form-grid">
+    <%= f.label :idp_metadata_url, "Metadata URL" %>
+    <div class="inline"><%= f.url_field :idp_metadata_url, placeholder: "https://example.onelogin.com/saml/metadata/…", style: "flex:1" %><button type="submit" name="fetch" value="1" class="button secondary">Fetch</button></div>
+    <%= f.label :idp_metadata_xml, "Metadata XML" %>
+    <%= f.text_area :idp_metadata_xml, rows: 3, class: "mono", placeholder: "<md:EntityDescriptor …>", style: "width:100%" %>
+  </div>
+  <% if @config.idp_metadata_xml.present? && @config.errors.empty? %>
+    <% idp = (@config.idp rescue {}) %>
+    <dl class="kv">
+      <dt>IdP entity</dt><dd class="mono"><%= idp[:idp_entity_id] %></dd>
+      <dt>SSO URL</dt><dd class="mono"><%= idp[:idp_sso_service_url] %></dd>
+      <% @config.idp_certificates.each do |cert| %>
+        <dt>Signing cert</dt><dd><span class="mono"><%= OpenSSL::Digest::SHA256.hexdigest(cert.to_der).scan(/../).first(8).join(":").upcase %>…</span> · expires <%= cert.not_after.strftime("%b %-d, %Y") %><% if cert.not_after < 30.days.from_now %> <span class="badge bad">soon</span><% end %></dd>
+      <% end %>
+    </dl>
+  <% end %>
+
+  <h2>3. Policy</h2>
+  <div class="form-grid">
+    <%= f.label :button_label, "Button" %><div class="inline">Sign in with <%= f.text_field :button_label, maxlength: 40 %></div>
+    <%= f.label :auto_provision, "New people" %>
+    <label class="check"><%= f.check_box :auto_provision %> Create an account (member) on first SSO sign-in</label>
+    <%= f.label :allowed_domains, "Allowed domains" %>
+    <%= f.text_field :allowed_domains, value: @config.allowed_domains.join(", "), placeholder: "e.g. bunny.com (blank = any the IdP sends)" %>
+    <%= f.label :password_login, "Passwords" %>
+    <%= f.select :password_login, [["Everyone can also sign in with a password", "everyone"], ["Only admins can use a password (break-glass)", "admins"]] %>
+    <%= f.label :enabled, "Single sign-on" %>
+    <label class="check"><%= f.check_box :enabled %> Show “Sign in with …” on the login page</label>
+  </div>
+  <p class="muted">Existing users sign in by email match. People the IdP authenticates who have no account are refused unless new accounts are allowed, and then only from the allowed domains.</p>
+  <div class="form-actions"><%= f.submit "Save" %></div>
+<% end %>

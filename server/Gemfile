@@ -41,6 +41,10 @@ group :test do
 end
 gem "msgpack"
 
+# SAML single sign-on (OneLogin or any SAML 2.0 IdP). 1.18+ has the fixes for
+# the 2025 signature-wrapping CVEs.
+gem "ruby-saml", "~> 1.18", ">= 1.18.1"
+
 # RubyAPM monitors itself (the "APM" app) when RUBY_APM_API_KEY is set; the
 # tests also use it to produce real agent payloads.
 gem "ruby_apm", git: "https://github.com/christianbpedersen/ruby_apm.git", tag: "v0.2.0"

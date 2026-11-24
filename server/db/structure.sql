@@ -732,6 +732,43 @@ ALTER SEQUENCE public.sql_statements_id_seq OWNED BY public.sql_statements.id;
 
 
 --
+-- Name: sso_configs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sso_configs (
+    id bigint NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    button_label character varying DEFAULT 'OneLogin'::character varying NOT NULL,
+    idp_metadata_url character varying,
+    idp_metadata_xml text,
+    auto_provision boolean DEFAULT false NOT NULL,
+    allowed_domains character varying[] DEFAULT '{}'::character varying[] NOT NULL,
+    password_login character varying DEFAULT 'everyone'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: sso_configs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.sso_configs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: sso_configs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.sso_configs_id_seq OWNED BY public.sso_configs.id;
+
+
+--
 -- Name: traces; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -837,7 +874,8 @@ CREATE TABLE public.users (
     role character varying DEFAULT 'member'::character varying NOT NULL,
     last_sign_in_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    last_sign_in_via character varying
 );
 
 
@@ -977,6 +1015,13 @@ ALTER TABLE ONLY public.sql_rollups ALTER COLUMN id SET DEFAULT nextval('public.
 --
 
 ALTER TABLE ONLY public.sql_statements ALTER COLUMN id SET DEFAULT nextval('public.sql_statements_id_seq'::regclass);
+
+
+--
+-- Name: sso_configs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sso_configs ALTER COLUMN id SET DEFAULT nextval('public.sso_configs_id_seq'::regclass);
 
 
 --
@@ -1150,6 +1195,14 @@ ALTER TABLE ONLY public.sql_rollups
 
 ALTER TABLE ONLY public.sql_statements
     ADD CONSTRAINT sql_statements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sso_configs sso_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sso_configs
+    ADD CONSTRAINT sso_configs_pkey PRIMARY KEY (id);
 
 
 --
@@ -1504,6 +1557,7 @@ ALTER TABLE ONLY public.api_tokens
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261124000002'),
 ('20261124000001'),
 ('20261120000001'),
 ('20261119000007'),

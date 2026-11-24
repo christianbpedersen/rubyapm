@@ -117,6 +117,14 @@ counted inside the ActiveRecord segments).
   First admin: `bin/rails rubyapm:create_user EMAIL=you@example.com` prints
   a setup link. The account page lists signed-in browsers, API tokens and
   connected MCP clients, each revocable.
+- Single sign-on: SAML 2.0 with OneLogin (or any SAML IdP), set up by an
+  admin under *Users → Single sign-on*. The page lists the values to enter at
+  the IdP (entity ID `…/saml/metadata`, ACS `…/saml/acs`) and takes the IdP's
+  metadata URL or XML. Users are matched by email; optionally, unknown people
+  from allowed domains get a member account on first sign-in. Password
+  sign-in can be limited to admins as a break-glass. Responses must be signed
+  by the IdP's certificate, addressed to this SP, unexpired, answer the
+  pending request (when SP-initiated), and each assertion works once.
 - Alerts: per-app policies (Apdex, error rate, p95, average, throughput,
   external API latency, slow queries), evaluated every minute over complete
   minutes, with incidents that open and resolve and Slack-compatible webhook

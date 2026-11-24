@@ -1,7 +1,7 @@
 <% content_for :title, "Users" %>
 <div class="page-head">
   <div><h1>Users</h1><div class="sub">Admins manage users; members see every app.</div></div>
-  <%= link_to "Add user", new_user_path, class: "button" %>
+  <div class="inline"><%= link_to "Single sign-on", sso_settings_path, class: "button secondary" %><%= link_to "Add user", new_user_path, class: "button" %></div>
 </div>
 <div class="panel">
   <div class="table-wrap">
@@ -13,7 +13,7 @@
             <td><%= link_to u.name.presence || "–", edit_user_path(u) %><% if u == current_user %> <span class="muted">(you)</span><% end %></td>
             <td><%= u.email %></td>
             <td><span class="badge <%= u.admin? ? 'type-web' : '' %>"><%= u.role %></span></td>
-            <td><%= u.activated? ? "Active" : tag.span("Invited", class: "badge warn") %></td>
+            <td><%= u.activated? || u.last_sign_in_via == "saml" ? "Active" : tag.span("Invited", class: "badge warn") %><% if u.last_sign_in_via == "saml" %> <span class="badge">SSO</span><% end %></td>
             <td data-sort-value="<%= u.last_sign_in_at.to_i %>"><%= u.last_sign_in_at ? time_ago(u.last_sign_in_at) : "never" %></td>
             <td class="num"><%= @session_counts[u.id].to_i %></td>
             <td class="row-actions">

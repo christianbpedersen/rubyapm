@@ -1,14 +1,19 @@
 <% content_for :title, "Sign in" %>
+<% sso = SsoConfig.enabled? ? SsoConfig.current : nil %>
 <h1>Sign in</h1>
-<% if User.none? %>
+<% if User.none? && !sso %>
   <div class="callout info">
     <strong>No users yet.</strong> Create the first admin on the server, then open the setup link it prints:
     <pre>bin/rails rubyapm:create_user EMAIL=you@example.com ROLE=admin</pre>
   </div>
 <% end %>
+<% if sso %>
+  <%= button_to "Sign in with #{sso.button_label}", saml_login_path, method: :get, class: "button sso-button", form: { data: { turbo: false } } %>
+  <div class="auth-divider"><span><%= sso.password_login == "admins" ? "admins can also use a password" : "or" %></span></div>
+<% end %>
 <%= form_with url: login_path, class: "auth-form" do |f| %>
   <%= f.label :email %>
-  <%= f.email_field :email, value: params[:email], required: true, autofocus: true, autocomplete: "username" %>
+  <%= f.email_field :email, value: params[:email], required: true, autofocus: !sso, autocomplete: "username" %>
   <%= f.label :password %>
   <%= f.password_field :password, required: true, autocomplete: "current-password" %>
   <%= f.submit "Sign in" %>

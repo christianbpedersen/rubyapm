@@ -244,6 +244,10 @@ GEM
     regexp_parser (2.13.4)
     reline (0.7.0)
       io-console (~> 0.5)
+    rexml (3.4.4)
+    ruby-saml (1.18.1)
+      nokogiri (>= 1.13.10)
+      rexml
     rubyzip (3.7.0)
     securerandom (0.4.1)
     selenium-webdriver (4.53.0)
@@ -299,6 +303,7 @@ DEPENDENCIES
   propshaft
   puma (>= 5.0)
   rails (~> 8.0.5)
+  ruby-saml (~> 1.18, >= 1.18.1)
   ruby_apm!
   selenium-webdriver
   stimulus-rails

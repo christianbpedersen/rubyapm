@@ -9,7 +9,11 @@ class SessionsController < ApplicationController
   end
 
   def create
-    if (user = User.authenticate(params[:email], params[:password]))
+    user = User.authenticate(params[:email], params[:password])
+    if user && !SsoConfig.current.password_login_for?(user)
+      flash.now[:alert] = "Sign in with #{SsoConfig.current.button_label} instead."
+      render :new, status: :unprocessable_entity
+    elsif user
       target = after_login_url # read before start_session resets the Rails session
       start_session(user)
       redirect_to target

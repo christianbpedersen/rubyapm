@@ -15,6 +15,10 @@ Rails.application.routes.draw do
     delete :sessions, action: :sign_out_others, as: :other_sessions
   end
   resources :api_tokens, only: %i[create destroy], path: "account/tokens"
+  resource :sso_settings, only: %i[show update], path: "sso"
+  get "saml/metadata", to: "saml#metadata", as: :saml_metadata
+  get "saml/login", to: "saml#login", as: :saml_login
+  post "saml/acs", to: "saml#acs", as: :saml_acs
   delete "account/connections/:client_id", to: "api_tokens#revoke_client", as: :oauth_connection
 
   # MCP (Streamable HTTP) and the OAuth server its clients sign in with.
