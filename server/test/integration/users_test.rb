@@ -57,6 +57,17 @@ class UsersTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "setup links never carry the password hash" do
+    user = User.create!(email: "dee@example.com", role: "member", password: AuthHelpers::PASSWORD)
+    token = user.generate_token_for(:password_setup)
+    payload = Base64.decode64(token.split("--").first)
+    refute_includes payload, user.password_digest
+    refute_includes payload, user.password_digest[7, 22] # the salt
+    assert_equal user, User.find_by_token_for(:password_setup, token)
+    user.update!(password: "another long password")
+    assert_nil User.find_by_token_for(:password_setup, token)
+  end
+
   test "the last admin can't be demoted or removed, and nobody removes themselves" do
     admin = sign_in
     patch "/users/#{admin.id}", params: { user: { role: "member" } }

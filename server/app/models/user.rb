@@ -16,8 +16,10 @@ class User < ApplicationRecord
   validates :password, length: { minimum: MIN_PASSWORD, maximum: 72 }, confirmation: true, allow_nil: true
 
   # Changing the password (or setting the first one) invalidates the link.
+  # The token is signed, not encrypted, so it carries only a fingerprint of
+  # the password hash, never the hash itself.
   generates_token_for :password_setup, expires_in: 3.days do
-    password_digest.to_s
+    OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, "password_setup:#{password_digest}").first(32)
   end
 
   scope :admins, -> { where(role: "admin") }
