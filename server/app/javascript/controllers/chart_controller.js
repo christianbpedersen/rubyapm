@@ -69,7 +69,12 @@ export default class extends Controller {
           x: isTime
             ? { type: "linear", min: cfg.labels[0], max: cfg.labels[cfg.labels.length - 1], grid: { display: false }, border: { color: grid }, ticks: { color: fg, maxTicksLimit: 6, callback: fmtX, font: { size: 11 } } }
             : { stacked: cfg.stacked, grid: { display: false }, border: { color: grid }, ticks: { color: fg, maxRotation: 0, autoSkip: true, font: { size: 11 } } },
-          y: { stacked: cfg.stacked, beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { color: fg, maxTicksLimit: 4, padding: 6, callback: (v) => format(v, unit), font: { size: 11 } } },
+          // Response times: logarithmic, so a few multi-minute requests don't
+          // flatten everything else. Zero and sub-millisecond values sit on the
+          // 1 ms floor; only powers of ten are labelled.
+          y: cfg.log
+            ? { type: "logarithmic", stacked: cfg.stacked, min: 1, grid: { color: grid }, border: { display: false }, ticks: { color: fg, padding: 6, autoSkip: false, callback: (v) => (isPowerOfTen(v) ? format(v, unit) : ""), font: { size: 11 } } }
+            : { stacked: cfg.stacked, beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { color: fg, maxTicksLimit: 4, padding: 6, callback: (v) => format(v, unit), font: { size: 11 } } },
         },
         plugins: {
           legend: {
@@ -188,6 +193,11 @@ function shorten(text, max) {
 function isIsolated(data, i) {
   const has = (j) => j >= 0 && j < data.length && data[j] !== null && data[j] !== undefined
   return has(i) && !has(i - 1) && !has(i + 1)
+}
+
+function isPowerOfTen(v) {
+  const e = Math.log10(v)
+  return Math.abs(e - Math.round(e)) < 1e-9
 }
 
 function format(v, unit) {

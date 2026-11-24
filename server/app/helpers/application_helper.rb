@@ -87,9 +87,11 @@ module ApplicationHelper
   end
 
   # JSON for the Stimulus chart controller.
-  def chart(type:, series:, unit: "ms", stacked: false, height: 200, labels: nil, zoom: true, title: nil, x: "time", m: metrics, legend: true)
+  # Durations over time get a logarithmic Y axis by default (log: false opts out).
+  def chart(type:, series:, unit: "ms", stacked: false, height: 200, labels: nil, zoom: true, title: nil, x: "time", m: metrics, legend: true, log: nil)
+    log = unit == "ms" && x == "time" && type != "bar" if log.nil?
     config = {
-      type: type, unit: unit, stacked: stacked, zoom: zoom && x == "time", x: x, legend: legend,
+      type: type, unit: unit, stacked: stacked, zoom: zoom && x == "time", x: x, legend: legend, log: log,
       labels: labels || m.bins, step: m.step,
       markers: x == "time" ? m.deployments.map { |d| { x: d.deployed_at.to_i, label: "deploy #{d.revision.first(8)}" } } : [],
       datasets: series.map { |s| { label: s[:label], data: s[:data], color: s[:color] } }
