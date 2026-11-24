@@ -39,9 +39,12 @@ namespace :rubyapm do
 
     user = User.find_by(email: email) || User.create!(email: email, name: ENV["NAME"].presence,
                                                      role: ENV["ROLE"].presence || (User.none? ? "admin" : "member"))
-    base = Notifier.base_url.chomp("/")
-    path = Rails.application.routes.url_helpers.password_setup_path(user.generate_token_for(:password_setup))
+    base = URI(Notifier.base_url) # may carry the mount path (https://host/apm)
+    url = Rails.application.routes.url_helpers.password_setup_url(
+      user.generate_token_for(:password_setup), protocol: base.scheme, host: base.host,
+      port: (base.port unless base.port == base.default_port), script_name: base.path.chomp("/")
+    )
     puts "#{user.email} (#{user.role}): open within 3 days to choose a password:"
-    puts "#{base}#{path}"
+    puts url
   end
 end
