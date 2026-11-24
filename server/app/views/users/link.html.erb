@@ -1,0 +1,11 @@
+<% content_for :title, "Setup link" %>
+<h1><%= @user.activated? ? "Password reset link" : "Setup link" %> for <%= @user.display_name %></h1>
+<div class="panel">
+  <p>Send this link to <strong><%= @user.email %></strong>. It works once and expires in three days.</p>
+  <div class="copy-row" data-controller="copy">
+    <input type="text" readonly value="<%= @link %>" data-copy-target="source" class="mono" aria-label="Setup link">
+    <button type="button" data-action="copy#copy" data-copy-target="button">Copy</button>
+  </div>
+  <p class="muted">Anyone with the link can set the password, so send it privately.</p>
+  <p><%= link_to "Back to users", users_path %></p>
+</div>

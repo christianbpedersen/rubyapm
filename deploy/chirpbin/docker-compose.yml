@@ -51,10 +51,6 @@ services:
       RAILS_RELATIVE_URL_ROOT: /apm
       RUBY_APM_BASE_URL: ${RUBY_APM_BASE_URL:-https://chirpbin.com/apm}
       RUBY_APM_AUTO_REGISTER: "0"
-      # Shared login (../auth): browsers go to AUTH_URL, tokens are verified
-      # server-to-server at AUTH_INTERNAL_URL over the chirpbin network.
-      AUTH_URL: ${AUTH_URL:-https://auth.chirpbin.com}
-      AUTH_INTERNAL_URL: ${AUTH_INTERNAL_URL:-http://chirpbin-auth-web:3000}
     ports:
       # 3600 verified free; 3100 amexalert, 3200 agent, 3300 docs, 3400 auth, 3500 protect.
       - "${WEB_PORT:-3600}:3000"

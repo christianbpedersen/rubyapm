@@ -12,11 +12,14 @@ class McpTest < ActionDispatch::IntegrationTest
     RubyAPM.config.slow_query_threshold = 50
     RubyAPM.config.revision = "abc1234"
     @shop = App.create!(name: "Shop", api_key: "nf_test")
+    user = User.create!(email: "mcp@example.com", role: "member")
+    @bearer = "Bearer #{ApiToken.issue!(kind: "personal", user: user, name: "test").token}"
   end
 
   def rpc(method, params = {}, id: 1, headers: {})
     post "/mcp", params: { jsonrpc: "2.0", id: id, method: method, params: params }.to_json,
-                 headers: { "Content-Type" => "application/json", "Accept" => "application/json, text/event-stream" }.merge(headers)
+                 headers: { "Content-Type" => "application/json", "Accept" => "application/json, text/event-stream",
+                            "Authorization" => @bearer }.merge(headers)
     response.body.present? ? JSON.parse(response.body) : nil
   end
 
@@ -33,7 +36,7 @@ class McpTest < ActionDispatch::IntegrationTest
     assert_equal "rubyapm", init.dig("result", "serverInfo", "name")
     assert init.dig("result", "capabilities", "tools")
 
-    post "/mcp", params: { jsonrpc: "2.0", method: "notifications/initialized" }.to_json, headers: { "Content-Type" => "application/json" }
+    post "/mcp", params: { jsonrpc: "2.0", method: "notifications/initialized" }.to_json, headers: { "Content-Type" => "application/json", "Authorization" => @bearer }
     assert_response :accepted
     assert_empty response.body
 
@@ -43,19 +46,29 @@ class McpTest < ActionDispatch::IntegrationTest
 
     assert_equal(-32601, rpc("nope")["error"]["code"])
     assert_equal(-32602, rpc("tools/call", { name: "apm_nope" })["error"]["code"])
-    post "/mcp", params: "{not json", headers: { "Content-Type" => "application/json" }
+    post "/mcp", params: "{not json", headers: { "Content-Type" => "application/json", "Authorization" => @bearer }
     assert_equal(-32700, JSON.parse(response.body)["error"]["code"])
-    get "/mcp"
+    get "/mcp", headers: { "Authorization" => @bearer }
     assert_response :method_not_allowed
   end
 
-  test "refuses proxied and browser requests" do
-    rpc("tools/list", {}, headers: { "X-Forwarded-For" => "203.0.113.9" })
-    assert_response :forbidden
-    rpc("tools/list", {}, headers: { "CF-Connecting-IP" => "203.0.113.9" })
-    assert_response :forbidden
+  test "requires a live token and rejects foreign origins" do
+    rpc("tools/list", {}, headers: { "Authorization" => nil })
+    assert_response :unauthorized
+    assert_match %r{resource_metadata="http://www.example.com/.well-known/oauth-protected-resource"}, response.headers["WWW-Authenticate"]
+    rpc("tools/list", {}, headers: { "Authorization" => "Bearer rapm_pat_nope" })
+    assert_response :unauthorized
+    ApiToken.update_all(expires_at: 1.minute.ago)
+    rpc("tools/list")
+    assert_response :unauthorized
+    ApiToken.update_all(expires_at: nil)
+
     rpc("tools/list", {}, headers: { "Origin" => "https://evil.example" })
     assert_response :forbidden
+    rpc("tools/list", {}, headers: { "Origin" => "http://www.example.com" })
+    assert_response :success
+    rpc("tools/list", {}, headers: { "X-Forwarded-For" => "203.0.113.9" }) # public now, behind the proxy
+    assert_response :success
   end
 
   test "every tool answers from ingested data" do

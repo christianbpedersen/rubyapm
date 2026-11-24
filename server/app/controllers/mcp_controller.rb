@@ -1,11 +1,12 @@
-# MCP Streamable HTTP endpoint (POST /mcp), for the chirpbin MCP gateway.
-# The gateway calls the container directly on the internal Docker network;
-# requests that came through a reverse proxy or from a browser are refused,
-# so the dashboard's public URL never exposes it (Caddy also blocks /apm/mcp).
+# MCP Streamable HTTP endpoint (POST /mcp). Callers authenticate with a
+# bearer token: an OAuth access token (claude.ai and other clients that sign
+# in through /oauth/authorize) or a personal token from the account page.
+# Without one, the 401 points clients at the OAuth discovery document.
 class McpController < ActionController::API
   MAX_BODY = 1.megabyte
 
-  before_action :require_direct_request
+  before_action :reject_foreign_origin
+  before_action :authenticate_token
 
   def create
     body = request.raw_post.to_s
@@ -26,12 +27,22 @@ class McpController < ActionController::API
 
   private
 
-  FORWARDED_HEADERS = %w[X-Forwarded-For X-Forwarded-Host Forwarded CF-Connecting-IP X-Real-IP].freeze
+  def base_url = "#{request.base_url}#{request.script_name}"
 
-  def require_direct_request
-    proxied = FORWARDED_HEADERS.any? { |h| request.headers[h].present? }
-    # Browsers always send Origin on cross-site POSTs; MCP clients don't.
-    head :forbidden if proxied || request.headers["Origin"].present?
+  def authenticate_token
+    @token = ApiToken.authenticate(request.authorization.to_s[/\ABearer (.+)\z/, 1])
+    return if @token
+
+    response.set_header("WWW-Authenticate",
+                        %(Bearer realm="RubyAPM", resource_metadata="#{base_url}/.well-known/oauth-protected-resource", scope="mcp"))
+    render json: { error: "unauthorized", error_description: "Sign in with OAuth or send a RubyAPM API token" }, status: :unauthorized
+  end
+
+  # DNS-rebinding guard from the MCP spec: browsers send Origin, and only
+  # this server's own origin may call it from a page.
+  def reject_foreign_origin
+    origin = request.headers["Origin"].presence
+    head :forbidden if origin && origin != request.base_url
   end
 
   def render_error(id, code, message, status)

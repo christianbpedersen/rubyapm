@@ -10,6 +10,16 @@ module Maintenance
     Compactor.run(older_than: COMPACT_AFTER_HOURS.hours.ago)
     thin_traces(COMPACT_AFTER_HOURS.hours.ago)
     prune(RETENTION_DAYS.days.ago)
+    prune_auth
+  end
+
+  # Expired tokens, used or stale authorization codes, idle sessions, and
+  # OAuth clients nobody ever approved.
+  def prune_auth
+    ApiToken.where(expires_at: ...Time.current).delete_all
+    OauthCode.where(expires_at: ...1.hour.ago).delete_all
+    Session.where(last_seen_at: ...Session::IDLE_TIMEOUT.ago).delete_all
+    OauthClient.where(created_at: ...1.day.ago).where.missing(:api_tokens).where.not(id: OauthCode.select(:oauth_client_id)).delete_all
   end
 
   # Recent traces are all kept; older ones only the slowest few per

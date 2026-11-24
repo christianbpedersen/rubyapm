@@ -3,6 +3,7 @@ require "test_helper"
 # Regression tests for issues found in code review.
 class ReviewFixesTest < ActionDispatch::IntegrationTest
   setup do
+    sign_in
     @nf = App.create!(name: "Fixes", api_key: "nf_fixes")
     Rails.configuration.x.auto_register_apps = false
   end

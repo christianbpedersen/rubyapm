@@ -1,0 +1,13 @@
+<% content_for :title, "Token created" %>
+<h1>Token created: <%= @token.name %></h1>
+<div class="panel">
+  <p><strong>Copy it now.</strong> It's shown only this once; RubyAPM keeps just a hash of it.</p>
+  <div class="copy-row" data-controller="copy">
+    <input type="text" readonly value="<%= @token.token %>" data-copy-target="source" class="mono" aria-label="API token">
+    <button type="button" data-action="copy#copy" data-copy-target="button">Copy</button>
+  </div>
+  <p>Add RubyAPM to Claude Code:</p>
+  <pre>claude mcp add --transport http rubyapm <%= @mcp_url %> --header "Authorization: Bearer <%= @token.token %>"</pre>
+  <p class="muted"><%= @token.expires_at ? "Expires #{@token.expires_at.strftime('%b %-d, %Y')}." : "Never expires." %> Revoke it any time on your account page.</p>
+  <p><%= link_to "Back to account", account_path %></p>
+</div>

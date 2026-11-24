@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= content_for(:title) ? "#{yield(:title)} · RubyAPM" : "RubyAPM" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="robots" content="noindex">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <script>
+      try { var t = localStorage.getItem("nf-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t } catch (e) {}
+    </script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%236366f1%22/><path d=%22M7 21l6-8 5 5 7-10%22 stroke=%22white%22 stroke-width=%223%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>">
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body class="auth-page">
+    <main class="auth-card">
+      <div class="auth-brand"><%= logo_mark %><span>RubyAPM</span></div>
+      <% flash.each do |type, msg| %><div class="flash <%= type %>"><%= msg %></div><% end %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

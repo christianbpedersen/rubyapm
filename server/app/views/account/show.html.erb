@@ -1,0 +1,91 @@
+<% content_for :title, "Account" %>
+<div class="page-head">
+  <div><h1>Account</h1><div class="sub"><%= current_user.email %> · <%= current_user.role %></div></div>
+  <%= button_to "Sign out", logout_path, method: :delete, class: "button secondary" %>
+</div>
+<% if current_user.errors.any? %><div class="callout bad"><%= current_user.errors.full_messages.to_sentence %></div><% end %>
+<div class="grid two">
+  <%= form_with model: current_user, url: account_path, method: :patch, class: "panel form-panel" do |f| %>
+    <h2>Profile</h2>
+    <div class="form-grid">
+      <%= f.label :name %><%= f.text_field :name %>
+      <%= f.label :email %><%= f.email_field :email, required: true, autocomplete: "username" %>
+    </div>
+    <div class="form-actions"><%= f.submit "Save" %></div>
+  <% end %>
+  <%= form_with url: password_account_path, method: :patch, class: "panel form-panel" do |f| %>
+    <h2>Password</h2>
+    <div class="form-grid">
+      <%= f.label :current_password, "Current" %><%= f.password_field :current_password, required: true, autocomplete: "current-password" %>
+      <%= f.label :password, "New" %><%= f.password_field :password, required: true, minlength: User::MIN_PASSWORD, maxlength: 72, autocomplete: "new-password" %>
+      <%= f.label :password_confirmation, "Repeat" %><%= f.password_field :password_confirmation, required: true, autocomplete: "new-password" %>
+    </div>
+    <div class="form-actions"><%= f.submit "Change password" %></div>
+  <% end %>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>MCP access</h2><span class="hint">Endpoint: <span class="mono"><%= request.base_url %><%= request.script_name %>/mcp</span></span></div>
+  <p class="muted">Claude (claude.ai, Claude Desktop) connects with OAuth: add the endpoint as a custom connector and approve it here. For Claude Code and scripts, create a token and send it as <span class="mono">Authorization: Bearer …</span>.</p>
+  <%= form_with url: api_tokens_path, class: "inline token-form" do |f| %>
+    <%= f.text_field :name, placeholder: "Token name, e.g. Claude Code on laptop", required: true, maxlength: 100 %>
+    <%= f.select :expires, [["Expires in 30 days", "30"], ["Expires in 90 days", "90"], ["Expires in a year", "365"], ["Never expires", "never"]], selected: "90" %>
+    <%= f.submit "Create token" %>
+  <% end %>
+  <% if @tokens.any? %>
+    <div class="table-wrap">
+      <table data-controller="table-sort">
+        <thead><tr><th>Token</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr></thead>
+        <tbody>
+          <% @tokens.each do |t| %>
+            <tr class="<%= 'muted' if t.expired? %>">
+              <td><%= t.name %></td>
+              <td data-sort-value="<%= t.created_at.to_i %>"><%= time_ago(t.created_at) %></td>
+              <td data-sort-value="<%= t.last_used_at.to_i %>"><%= t.last_used_at ? time_ago(t.last_used_at) : "never" %></td>
+              <td data-sort-value="<%= t.expires_at.to_i %>"><%= t.expires_at ? (t.expired? ? "expired" : t.expires_at.strftime("%b %-d, %Y")) : "never" %></td>
+              <td class="row-actions"><%= button_to "Revoke", api_token_path(t), method: :delete, class: "link-button danger", form: { data: { turbo_confirm: "Revoke #{t.name}? Clients using it stop working." } } %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+  <% if @connections.any? %>
+    <h3>Connected apps</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>App</th><th>Connected</th><th></th></tr></thead>
+        <tbody>
+          <% @connections.each do |c| %>
+            <tr>
+              <td><%= c.name %></td>
+              <td><%= time_ago(c.connected_at) %></td>
+              <td class="row-actions"><%= button_to "Disconnect", oauth_connection_path(c.id), method: :delete, class: "link-button danger" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Signed-in browsers</h2>
+    <% if @sessions.size > 1 %><%= button_to "Sign out all others", other_sessions_account_path, method: :delete, class: "link-button" %><% end %>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Browser</th><th>IP</th><th>Last active</th></tr></thead>
+      <tbody>
+        <% @sessions.each do |s| %>
+          <tr>
+            <td title="<%= s.user_agent %>"><%= s.user_agent.to_s.truncate(70) %><% if s.id == cookies.signed[Authentication::COOKIE] %> <span class="badge good">this one</span><% end %></td>
+            <td class="mono"><%= s.ip_address %></td>
+            <td><%= time_ago(s.last_seen_at) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

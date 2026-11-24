@@ -6,12 +6,12 @@
 <div class="panel">
   <h2>Install the agent</h2>
   <p>Add the gem to the monitored app's Gemfile:</p>
-  <pre>gem "ruby_apm", path: "<%= Rails.root.join("..", "agent").expand_path %>"</pre>
+  <pre>gem "ruby_apm", git: "https://github.com/christianbpedersen/ruby_apm.git", tag: "v<%= RubyAPM::VERSION %>"</pre>
   <p>Then configure it in <code>config/initializers/ruby_apm.rb</code>:</p>
 <pre>RubyAPM.configure do |c|
   c.app_name = "<%= current_app.name %>"
   c.api_key  = "<%= current_app.api_key %>"
-  c.endpoint = "<%= request.base_url %>"
+  c.endpoint = "<%= request.base_url %><%= request.script_name %>"
   c.apdex_t  = <%= current_app.apdex_t.round %>        # ms
   c.flush_interval = 10    # seconds between batches
   c.slow_query_threshold = 100  # ms; samples + EXPLAIN

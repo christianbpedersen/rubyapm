@@ -1,0 +1,12 @@
+<%= form_with model: @user, class: "panel form-panel" do |f| %>
+  <% if @user.errors.any? %><div class="callout bad"><%= @user.errors.full_messages.to_sentence %></div><% end %>
+  <div class="form-grid">
+    <%= f.label :email %><%= f.email_field :email, required: true, autocomplete: "off" %>
+    <%= f.label :name %><%= f.text_field :name, placeholder: "optional" %>
+    <%= f.label :role %><%= f.select :role, [["Member: sees all apps", "member"], ["Admin: also manages users", "admin"]] %>
+  </div>
+  <% unless @user.persisted? %>
+    <p class="muted">You'll get a setup link to send them; they choose their own password there. There's no email from RubyAPM.</p>
+  <% end %>
+  <div class="form-actions"><%= f.submit(@user.persisted? ? "Save" : "Add user") %> <%= link_to "Cancel", users_path %></div>
+<% end %>

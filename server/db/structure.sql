@@ -87,6 +87,43 @@ ALTER SEQUENCE public.alert_policies_id_seq OWNED BY public.alert_policies.id;
 
 
 --
+-- Name: api_tokens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_tokens (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    oauth_client_id bigint,
+    kind character varying NOT NULL,
+    name character varying,
+    token_digest character varying NOT NULL,
+    expires_at timestamp(6) without time zone,
+    last_used_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: api_tokens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.api_tokens_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: api_tokens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.api_tokens_id_seq OWNED BY public.api_tokens.id;
+
+
+--
 -- Name: app_rollups; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -379,6 +416,77 @@ CREATE TABLE public.ingested_buckets (
 
 
 --
+-- Name: oauth_clients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.oauth_clients (
+    id bigint NOT NULL,
+    client_id character varying NOT NULL,
+    name character varying NOT NULL,
+    redirect_uris character varying[] DEFAULT '{}'::character varying[] NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: oauth_clients_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.oauth_clients_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: oauth_clients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.oauth_clients_id_seq OWNED BY public.oauth_clients.id;
+
+
+--
+-- Name: oauth_codes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.oauth_codes (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    oauth_client_id bigint NOT NULL,
+    code_digest character varying NOT NULL,
+    redirect_uri character varying NOT NULL,
+    code_challenge character varying NOT NULL,
+    resource character varying,
+    expires_at timestamp(6) without time zone NOT NULL,
+    used_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: oauth_codes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.oauth_codes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: oauth_codes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.oauth_codes_id_seq OWNED BY public.oauth_codes.id;
+
+
+--
 -- Name: runtime_rollups; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -469,6 +577,40 @@ CREATE SEQUENCE public.segment_rollups_id_seq
 --
 
 ALTER SEQUENCE public.segment_rollups_id_seq OWNED BY public.segment_rollups.id;
+
+
+--
+-- Name: sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sessions (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    ip_address character varying,
+    user_agent character varying,
+    last_seen_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: sessions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.sessions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: sessions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.sessions_id_seq OWNED BY public.sessions.id;
 
 
 --
@@ -684,10 +826,52 @@ ALTER SEQUENCE public.tx_rollups_id_seq OWNED BY public.tx_rollups.id;
 
 
 --
+-- Name: users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.users (
+    id bigint NOT NULL,
+    email character varying NOT NULL,
+    name character varying,
+    password_digest character varying,
+    role character varying DEFAULT 'member'::character varying NOT NULL,
+    last_sign_in_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.users_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+
+--
 -- Name: alert_policies id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.alert_policies ALTER COLUMN id SET DEFAULT nextval('public.alert_policies_id_seq'::regclass);
+
+
+--
+-- Name: api_tokens id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_tokens ALTER COLUMN id SET DEFAULT nextval('public.api_tokens_id_seq'::regclass);
 
 
 --
@@ -740,6 +924,20 @@ ALTER TABLE ONLY public.incidents ALTER COLUMN id SET DEFAULT nextval('public.in
 
 
 --
+-- Name: oauth_clients id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_clients ALTER COLUMN id SET DEFAULT nextval('public.oauth_clients_id_seq'::regclass);
+
+
+--
+-- Name: oauth_codes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_codes ALTER COLUMN id SET DEFAULT nextval('public.oauth_codes_id_seq'::regclass);
+
+
+--
 -- Name: runtime_rollups id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -751,6 +949,13 @@ ALTER TABLE ONLY public.runtime_rollups ALTER COLUMN id SET DEFAULT nextval('pub
 --
 
 ALTER TABLE ONLY public.segment_rollups ALTER COLUMN id SET DEFAULT nextval('public.segment_rollups_id_seq'::regclass);
+
+
+--
+-- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions ALTER COLUMN id SET DEFAULT nextval('public.sessions_id_seq'::regclass);
 
 
 --
@@ -789,11 +994,26 @@ ALTER TABLE ONLY public.tx_rollups ALTER COLUMN id SET DEFAULT nextval('public.t
 
 
 --
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
 -- Name: alert_policies alert_policies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.alert_policies
     ADD CONSTRAINT alert_policies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: api_tokens api_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_tokens
+    ADD CONSTRAINT api_tokens_pkey PRIMARY KEY (id);
 
 
 --
@@ -861,6 +1081,22 @@ ALTER TABLE ONLY public.incidents
 
 
 --
+-- Name: oauth_clients oauth_clients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_clients
+    ADD CONSTRAINT oauth_clients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_codes oauth_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_codes
+    ADD CONSTRAINT oauth_codes_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: runtime_rollups runtime_rollups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -882,6 +1118,14 @@ ALTER TABLE ONLY public.schema_migrations
 
 ALTER TABLE ONLY public.segment_rollups
     ADD CONSTRAINT segment_rollups_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions
+    ADD CONSTRAINT sessions_pkey PRIMARY KEY (id);
 
 
 --
@@ -922,6 +1166,14 @@ ALTER TABLE ONLY public.traces
 
 ALTER TABLE ONLY public.tx_rollups
     ADD CONSTRAINT tx_rollups_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
 
 --
@@ -1023,6 +1275,27 @@ CREATE INDEX index_alert_policies_on_app_id ON public.alert_policies USING btree
 
 
 --
+-- Name: index_api_tokens_on_oauth_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_tokens_on_oauth_client_id ON public.api_tokens USING btree (oauth_client_id);
+
+
+--
+-- Name: index_api_tokens_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_api_tokens_on_token_digest ON public.api_tokens USING btree (token_digest);
+
+
+--
+-- Name: index_api_tokens_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_tokens_on_user_id ON public.api_tokens USING btree (user_id);
+
+
+--
 -- Name: index_app_rollups_on_app_id_and_ts_and_tx_type; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1100,6 +1373,41 @@ CREATE INDEX index_ingested_buckets_on_received_at ON public.ingested_buckets US
 
 
 --
+-- Name: index_oauth_clients_on_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_oauth_clients_on_client_id ON public.oauth_clients USING btree (client_id);
+
+
+--
+-- Name: index_oauth_codes_on_code_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_oauth_codes_on_code_digest ON public.oauth_codes USING btree (code_digest);
+
+
+--
+-- Name: index_oauth_codes_on_oauth_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_oauth_codes_on_oauth_client_id ON public.oauth_codes USING btree (oauth_client_id);
+
+
+--
+-- Name: index_oauth_codes_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_oauth_codes_on_user_id ON public.oauth_codes USING btree (user_id);
+
+
+--
+-- Name: index_sessions_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_sessions_on_user_id ON public.sessions USING btree (user_id);
+
+
+--
 -- Name: index_slow_queries_on_app_id_and_key_and_ts; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1135,11 +1443,58 @@ CREATE INDEX index_traces_on_app_id_and_tx_type_and_tx_name_and_ts ON public.tra
 
 
 --
+-- Name: index_users_on_lower_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_users_on_lower_email ON public.users USING btree (lower((email)::text));
+
+
+--
+-- Name: oauth_codes fk_rails_0378c35eed; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_codes
+    ADD CONSTRAINT fk_rails_0378c35eed FOREIGN KEY (oauth_client_id) REFERENCES public.oauth_clients(id) ON DELETE CASCADE;
+
+
+--
 -- Name: hosts fk_rails_3d1fec7a4a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.hosts
     ADD CONSTRAINT fk_rails_3d1fec7a4a FOREIGN KEY (app_id) REFERENCES public.apps(id);
+
+
+--
+-- Name: sessions fk_rails_758836b4f0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions
+    ADD CONSTRAINT fk_rails_758836b4f0 FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: api_tokens fk_rails_7d3d3df8bd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_tokens
+    ADD CONSTRAINT fk_rails_7d3d3df8bd FOREIGN KEY (oauth_client_id) REFERENCES public.oauth_clients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_codes fk_rails_d4c1d7d44e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_codes
+    ADD CONSTRAINT fk_rails_d4c1d7d44e FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: api_tokens fk_rails_f16b5e0447; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_tokens
+    ADD CONSTRAINT fk_rails_f16b5e0447 FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -1149,6 +1504,7 @@ ALTER TABLE ONLY public.hosts
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261124000001'),
 ('20261120000001'),
 ('20261119000007'),
 ('20261119000006'),

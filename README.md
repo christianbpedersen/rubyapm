@@ -107,10 +107,16 @@ counted inside the ActiveRecord segments).
   with one multi-row `INSERT … ON CONFLICT` per table. Latency histograms are
   merged with an element-wise array sum (`nf_array_add`). In development an
   unknown API key registers its app automatically.
-- Single tenant: one installation, any number of monitored apps, no user
-  accounts. Set `RUBY_APM_DASHBOARD_PASSWORD` (and optionally
-  `RUBY_APM_DASHBOARD_USER`, default `admin`) to put the dashboard behind
-  HTTP Basic auth; agents authenticate with their app's API key.
+- Single tenant: one installation, any number of monitored apps. Agents
+  authenticate with their app's API key.
+- Users: everyone signs in with email and password (bcrypt, rate-limited).
+  Admins add users under *Users*; RubyAPM sends no email, so adding someone
+  (or resetting a password) gives the admin a setup link to pass on, valid
+  for three days and only until a password is set. Members see every app;
+  admins also manage users. The last admin can't be removed or demoted.
+  First admin: `bin/rails rubyapm:create_user EMAIL=you@example.com` prints
+  a setup link. The account page lists signed-in browsers, API tokens and
+  connected MCP clients, each revocable.
 - Alerts: per-app policies (Apdex, error rate, p95, average, throughput,
   external API latency, slow queries), evaluated every minute over complete
   minutes, with incidents that open and resolve and Slack-compatible webhook
@@ -159,13 +165,25 @@ tools are read-only and return JSON with links back to the dashboard:
 | `apm_deployments` | deploys; with an id or revision, a before/after comparison |
 | `apm_incidents` | alert policies and incidents |
 
-The endpoint refuses anything that came through a reverse proxy
-(`X-Forwarded-For`, `CF-Connecting-IP`, ...) or carries a browser `Origin`,
-so it is reachable only from the internal Docker network. In production the
-chirpbin MCP gateway (`~/chirpbin.com/mcp`, https://mcp.chirpbin.com/mcp)
-calls `http://chirpbin-apm-web:3000/apm/mcp` and adds its OAuth in front;
-Caddy also answers 404 for `/apm/mcp` on the public site. Locally:
-`http://localhost:4400/mcp`.
+RubyAPM is its own OAuth 2.1 authorization server, so the endpoint needs
+nothing in front of it. Every call carries a bearer token:
+
+- **Claude (claude.ai, Desktop) and other OAuth clients**: add
+  `https://<host>/mcp` as a custom connector. The client finds the server
+  through the 401's `resource_metadata` (RFC 9728) and the authorization
+  server metadata (RFC 8414), registers itself (RFC 7591), and sends the user
+  to `/oauth/authorize` to sign in and approve read access. Codes need PKCE
+  (S256); access tokens last an hour, refresh tokens 30 days and rotate on
+  every use.
+- **Claude Code and scripts**: create a personal token on the account page:
+  `claude mcp add --transport http rubyapm https://<host>/mcp --header "Authorization: Bearer rapm_pat_…"`
+
+Only SHA-256 digests of tokens and codes are stored. Requests carrying a
+browser `Origin` other than the server's own are refused. Under a path
+prefix (`/apm`), the host-root discovery URLs
+(`/.well-known/oauth-authorization-server/apm`,
+`/.well-known/oauth-protected-resource/apm/mcp`) must also be routed to the
+app; `config.ru` maps them. Locally: `http://localhost:4400/mcp`.
 
 ## Tests
 
@@ -183,8 +201,9 @@ Docker network) and its own Postgres container (`apm-db-1`, volume
 page); `apm.chirpbin.com` permanently redirects there. The app mounts itself
 under `/apm` (`RAILS_RELATIVE_URL_ROOT`).
 
-- Dashboard: requires the shared chirpbin.com login (auth.chirpbin.com),
-  enabled by `AUTH_INTERNAL_URL` in the container.
+- Dashboard: RubyAPM's own users (see above); MCP:
+  `https://chirpbin.com/apm/mcp`. Caddy routes `/apm/*` and the two
+  `/.well-known/…/apm` discovery paths to the container.
 - Ingest: `https://chirpbin.com/apm/api/v1/ingest`, authenticated by the API
   key of each app; the first one is created on boot from
   `RUBY_APM_BOOTSTRAP_APP` and `RUBY_APM_BOOTSTRAP_API_KEY`.
@@ -210,5 +229,5 @@ image there and restarts the containers. On boot the server runs
   plans are only lightly understood. Plans are never captured with ANALYZE.
 - Data older than 24 h is hourly, so zooming into it gives hour bins, and
   deploys older than that are compared in whole hours.
-- No user accounts: one shared dashboard login (optional HTTP Basic auth).
-  Retention defaults to 8 days.
+- No per-app permissions: every user sees every app. No email delivery, so
+  setup and reset links are passed on by hand. Retention defaults to 8 days.

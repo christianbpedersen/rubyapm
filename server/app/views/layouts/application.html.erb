@@ -47,6 +47,12 @@
             <% if current_app && !content_for?(:no_range) %>
               <%= render "shared/range_picker" %>
             <% end %>
+            <% if signed_in? %>
+              <nav class="user-menu" aria-label="Account">
+                <% if current_user.admin? %><%= link_to "Users", users_path %><% end %>
+                <%= link_to current_user.display_name, account_path, title: "Account, API tokens" %>
+              </nav>
+            <% end %>
             <button type="button" class="theme-toggle" data-controller="theme" data-action="theme#toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
               <span class="icon-moon"><%= icon(:moon) %></span><span class="icon-sun"><%= icon(:sun) %></span>
             </button>

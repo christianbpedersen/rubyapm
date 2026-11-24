@@ -216,7 +216,7 @@ td > a.mono { font-weight: 500; }
 .tabs a.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px var(--border); }
 
 .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
-input[type=search], input[type=text], input[type=url], input[type=number], select {
+input[type=search], input[type=text], input[type=url], input[type=number], input[type=email], input[type=password], select {
   height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
   background: var(--surface); color: var(--text); font: inherit;
 }
@@ -246,7 +246,7 @@ button, .button, input[type=submit] {
 .kv dd { margin: 0; word-break: break-word; }
 .form-grid { display: grid; grid-template-columns: max-content 1fr; gap: 10px 14px; align-items: center; margin-bottom: 12px; }
 .form-grid label { color: var(--text-2); font-weight: 500; }
-.form-grid input[type=text], .form-grid input[type=url], .form-grid input[type=number], .form-grid select { width: 100%; }
+.form-grid input[type=text], .form-grid input[type=url], .form-grid input[type=number], .form-grid input[type=email], .form-grid input[type=password], .form-grid select { width: 100%; }
 .inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* -------------------------------------------------------- trace waterfall */
@@ -325,3 +325,29 @@ th.sorted-asc, th.sorted-desc { color: var(--text); }
 th.sorted-asc::after { content: "▲"; opacity: .8; }
 th.sorted-desc::after { content: "▼"; opacity: .8; }
 th.sortable:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: -2px; }
+
+/* Sign-in, setup links and accounts */
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg); }
+.auth-card { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+.auth-card h1 { font-size: 20px; margin: 0 0 12px; }
+.auth-card pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; margin: 6px 0 0; }
+.auth-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 18px; }
+.auth-form { display: grid; gap: 6px; margin-top: 8px; }
+.auth-form label { color: var(--text-2); font-weight: 500; margin-top: 6px; }
+.auth-form input[type=email], .auth-form input[type=password] { width: 100%; height: 36px; }
+.auth-form input[type=submit] { margin-top: 12px; height: 36px; justify-content: center; }
+.auth-actions { display: flex; gap: 10px; margin-top: 16px; }
+.auth-foot { margin: 16px 0 0; font-size: 12.5px; }
+.button.secondary, button.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.link-button { background: none; color: var(--accent-text); height: auto; padding: 0; font-weight: 500; }
+.link-button:hover { filter: none; text-decoration: underline; }
+.link-button.danger { background: none; color: var(--bad); }
+.row-actions { display: flex; gap: 12px; justify-content: flex-end; align-items: center; white-space: nowrap; }
+.row-actions form { display: inline; }
+.copy-row { display: flex; gap: 8px; margin: 10px 0; }
+.copy-row input { flex: 1; min-width: 0; }
+.token-form { margin-bottom: 12px; }
+.token-form input[type=text] { flex: 1; min-width: 220px; }
+.danger-panel { border-color: var(--bad); }
+.user-menu { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.user-menu a { color: var(--text-2); }

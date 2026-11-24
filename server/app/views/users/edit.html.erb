@@ -1,0 +1,15 @@
+<% content_for :title, @user.display_name %>
+<h1><%= @user.display_name %></h1>
+<%= render "form" %>
+<div class="panel">
+  <h2>Password</h2>
+  <p class="muted"><%= @user.activated? ? "A reset link lets them choose a new password; the current one keeps working until they do." : "They haven't set a password yet." %></p>
+  <%= button_to (@user.activated? ? "Create reset link" : "Create a new setup link"), setup_link_user_path(@user), class: "button" %>
+</div>
+<% unless @user == current_user %>
+  <div class="panel danger-panel">
+    <h2>Remove user</h2>
+    <p class="muted">Signs them out everywhere and revokes their API tokens and connected apps.</p>
+    <%= button_to "Remove #{@user.display_name}", user_path(@user), method: :delete, class: "button danger", form: { data: { turbo_confirm: "Remove #{@user.display_name}?" } } %>
+  </div>
+<% end %>

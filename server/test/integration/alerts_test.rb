@@ -2,6 +2,8 @@ require "test_helper"
 require "socket"
 
 class AlertsTest < ActionDispatch::IntegrationTest
+  setup { sign_in }
+
   # Minimal HTTP server that records webhook bodies.
   def with_webhook_receiver
     server = TCPServer.new("127.0.0.1", 0)

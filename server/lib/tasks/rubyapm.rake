@@ -30,3 +30,18 @@ namespace :rubyapm do
     puts "[bootstrap] app #{app.name.inspect} (id #{app.id}) ready"
   end
 end
+
+namespace :rubyapm do
+  desc "Create a user (EMAIL=…, ROLE=admin|member, NAME=…) or a new setup link for an existing one; prints the link"
+  task create_user: :environment do
+    email = ENV["EMAIL"].to_s.strip.downcase
+    abort "usage: bin/rails rubyapm:create_user EMAIL=you@example.com [ROLE=admin] [NAME=…]" if email.empty?
+
+    user = User.find_by(email: email) || User.create!(email: email, name: ENV["NAME"].presence,
+                                                     role: ENV["ROLE"].presence || (User.none? ? "admin" : "member"))
+    base = Notifier.base_url.chomp("/")
+    path = Rails.application.routes.url_helpers.password_setup_path(user.generate_token_for(:password_setup))
+    puts "#{user.email} (#{user.role}): open within 3 days to choose a password:"
+    puts "#{base}#{path}"
+  end
+end

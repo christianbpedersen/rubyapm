@@ -1,0 +1,11 @@
+<% content_for :title, "Connect #{@client.name}" %>
+<h1>Connect <%= @client.name %>?</h1>
+<p><strong><%= @client.name %></strong> wants to read RubyAPM data as <strong><%= current_user.display_name %></strong>: apps, metrics, traces, SQL, errors, deployments and incidents. It can't change anything.</p>
+<p class="muted">You'll be sent back to <span class="mono"><%= URI.parse(@redirect_uri).then { |u| [u.host, u.port].compact.join(":") } %></span>. Disconnect it any time on your <%= link_to "account page", account_path %>.</p>
+<%= form_with url: oauth_authorize_path, class: "auth-actions" do |f| %>
+  <% %w[client_id redirect_uri response_type code_challenge code_challenge_method state scope resource].each do |k| %>
+    <%= hidden_field_tag k, params[k] %>
+  <% end %>
+  <button type="submit" name="decision" value="approve">Allow access</button>
+  <button type="submit" name="decision" value="deny" class="button secondary">Deny</button>
+<% end %>

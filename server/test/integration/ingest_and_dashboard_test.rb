@@ -11,6 +11,7 @@ class IngestAndDashboardTest < ActionDispatch::IntegrationTest
     RubyAPM.config.slow_query_threshold = 50
     RubyAPM.config.revision = "abc1234"
     @shop = App.create!(name: "Shop", api_key: "nf_test")
+    sign_in
   end
 
   test "ingests and renders every page" do
@@ -79,14 +80,14 @@ class IngestAndDashboardTest < ActionDispatch::IntegrationTest
     assert_redirected_to %r{/transaction\?}
   end
 
-  test "dashboard login when a password is configured" do
-    ENV["RUBY_APM_DASHBOARD_PASSWORD"] = "s3cret"
-    get "/"
-    assert_response :unauthorized
-    get "/", headers: { "Authorization" => ActionController::HttpAuthentication::Basic.encode_credentials("admin", "s3cret") }
+  test "dashboard pages require a signed-in user" do
+    reset! # drop the setup's sign-in
+    get "/apps/#{@shop.id}"
+    assert_redirected_to "/login"
+    sign_in
+    assert_redirected_to "http://www.example.com/apps/#{@shop.id}"
+    get "/apps/#{@shop.id}"
     assert_response :success
-  ensure
-    ENV.delete("RUBY_APM_DASHBOARD_PASSWORD")
   end
 
   test "rejects unknown keys when auto registration is off" do
