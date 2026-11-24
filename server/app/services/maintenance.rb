@@ -50,7 +50,9 @@ module Maintenance
       Rails.logger.info("[maintenance] #{model.table_name}: pruned #{n}") if n.positive?
     end
     SqlStatement.where(last_seen_at: ...cutoff).delete_all
-    IngestedBucket.where(received_at: ...1.day.ago).in_batches(of: 50_000).delete_all
+    # No primary key (only a unique index), so no in_batches; a day of
+    # bucket IDs is small enough for one statement.
+    IngestedBucket.where(received_at: ...1.day.ago).delete_all
     Host.where(last_seen_at: ...cutoff).delete_all
   end
 end
