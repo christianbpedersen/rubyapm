@@ -5,8 +5,11 @@ Rails.application.routes.draw do
   get "login", to: "sessions#new", as: :login
   post "login", to: "sessions#create"
   delete "logout", to: "sessions#destroy", as: :logout
-  get "password/:token", to: "password_setups#edit", as: :password_setup
-  patch "password/:token", to: "password_setups#update"
+  # The link's token goes into the session and the browser is redirected,
+  # so it never appears in later request paths, logs or traces.
+  get "password/:token", to: "password_setups#claim", as: :password_setup
+  get "password", to: "password_setups#edit", as: :password_form
+  patch "password", to: "password_setups#update"
   resources :users, except: :show do
     post :setup_link, on: :member
   end

@@ -44,13 +44,18 @@ class Notifier
     return if @policy.webhook_url.blank?
 
     uri = URI.parse(@policy.webhook_url)
+    address = WebhookTarget.resolve!(uri)
     http = Net::HTTP.new(uri.host, uri.port)
+    http.ipaddr = address if address # connect to the vetted address; TLS still checks the host name
     http.use_ssl = uri.scheme == "https"
     http.open_timeout = 3
     http.read_timeout = 5
     response = http.post(uri.request_uri, payload.to_json, "Content-Type" => "application/json", "User-Agent" => "RubyAPM")
     @incident.update_columns(notify_error: response.is_a?(Net::HTTPSuccess) ? nil : "HTTP #{response.code}")
-  rescue StandardError => e
-    @incident.update_columns(notify_error: "#{e.class}: #{e.message}".first(250))
+  rescue WebhookTarget::Blocked => e
+    @incident.update_columns(notify_error: "not sent: #{e.message}")
+  rescue StandardError
+    # Details (connection refused vs timeout) would map out other hosts.
+    @incident.update_columns(notify_error: "delivery failed")
   end
 end

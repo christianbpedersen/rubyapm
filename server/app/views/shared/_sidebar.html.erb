@@ -16,8 +16,8 @@
     "Operations" => [
       ["Deployments", :deployments, app_deployments_path(current_app), "deployments"],
       ["Hosts & runtime", :hosts, app_hosts_path(current_app, **range_params), "hosts"],
-      ["Settings", :settings, settings_app_path(current_app), "apps#settings"]
-    ]
+      (["Settings", :settings, settings_app_path(current_app), "apps#settings"] if current_user&.admin?)
+    ].compact
   }
   here_action = "#{controller_name}##{action_name}"
   open_incidents = current_app.incidents.open.count

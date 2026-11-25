@@ -1,5 +1,7 @@
 class AppsController < ApplicationController
   before_action :load_app, only: %i[show settings regenerate_key destroy]
+  # Members watch apps; adding, deleting and the ingest keys are for admins.
+  before_action :require_admin, only: %i[new create settings regenerate_key destroy]
 
   def index
     @apps = App.order(:name)

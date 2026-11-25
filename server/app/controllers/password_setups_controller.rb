@@ -6,7 +6,12 @@ class PasswordSetupsController < ApplicationController
   rate_limit to: 20, within: 10.minutes, only: :update
   layout "auth"
 
-  before_action :load_user
+  before_action :load_user, except: :claim
+
+  def claim
+    session[:password_setup_token] = params[:token].to_s.first(2_000)
+    redirect_to password_form_path
+  end
 
   def edit; end
 
@@ -17,7 +22,7 @@ class PasswordSetupsController < ApplicationController
       @user.assign_attributes(password: params[:password], password_confirmation: params[:password_confirmation])
       if @user.save
         @user.sessions.delete_all # a new password signs out everywhere else
-        @user.api_tokens.where(kind: %w[access refresh]).delete_all
+        @user.api_tokens.delete_all # and revokes API tokens and connected apps
         start_session(@user)
         return redirect_to root_path, notice: "Password set. Welcome, #{@user.display_name}."
       end
@@ -28,7 +33,12 @@ class PasswordSetupsController < ApplicationController
   private
 
   def load_user
-    @user = User.find_by_token_for(:password_setup, params[:token])
-    render :invalid, status: :not_found unless @user
+    @user = User.find_by_token_for(:password_setup, session[:password_setup_token].to_s)
+    return render(:invalid, status: :not_found) unless @user
+    # With SSO required for members, a setup link must not become a way around it.
+    return if SsoConfig.current.password_login_for?(@user)
+
+    session.delete(:password_setup_token)
+    redirect_to login_path, alert: "Sign in with #{SsoConfig.current.button_label}; password sign-in is for admins only."
   end
 end

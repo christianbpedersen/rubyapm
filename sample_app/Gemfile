@@ -40,5 +40,5 @@ group :test do
   gem "selenium-webdriver"
 end
 
-gem "ruby_apm", git: "https://github.com/christianbpedersen/ruby_apm.git", tag: "v0.2.1"
+gem "ruby_apm", git: "https://github.com/christianbpedersen/ruby_apm.git", tag: "v0.2.2"
 gem "graphql", "~> 2.6"

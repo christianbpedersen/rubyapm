@@ -114,7 +114,19 @@ module ApplicationHelper
   def sortable(label, key, default: nil)
     current = params[:sort].presence || default
     dir = current == key ? " ▾" : ""
-    link_to("#{label}#{dir}", request.query_parameters.merge(sort: key), class: "sort")
+    link_to("#{label}#{dir}", current_path_with({ sort: key }), class: "sort")
+  end
+
+  # Query keys the dashboard round-trips in its own links.
+  LINK_PARAMS = %w[range from to type q sort cat table op name key service fingerprint metric incident minutes tx_name tx_type].freeze
+
+  # This page's path with an adjusted query string. Never a Hash for
+  # url_for: keys like host/protocol/port in the request would make the link
+  # point elsewhere (or at javascript:).
+  def current_path_with(changes = {}, except: [])
+    query = request.query_parameters.slice(*LINK_PARAMS).except(*except.map(&:to_s))
+                   .merge(changes.transform_keys(&:to_s)).compact_blank
+    query.empty? ? request.path : "#{request.path}?#{query.to_query}"
   end
 
   def sql_snippet(sql, length = 140)

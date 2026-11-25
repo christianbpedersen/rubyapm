@@ -6,7 +6,9 @@ class AccountController < ApplicationController
   end
 
   def update
-    if current_user.update(params.expect(user: %i[name email]))
+    # Email is the identity SSO matches on, so only admins change it.
+    fields = current_user.admin? ? %i[name email] : %i[name]
+    if current_user.update(params.expect(user: fields))
       redirect_to account_path, notice: "Profile saved."
     else
       load_lists
@@ -24,7 +26,8 @@ class AccountController < ApplicationController
       user.assign_attributes(password: params[:password], password_confirmation: params[:password_confirmation])
       if user.save
         user.sessions.where.not(id: current_session.id).delete_all
-        return redirect_to account_path, notice: "Password changed. Other browsers were signed out."
+        user.api_tokens.delete_all
+        return redirect_to account_path, notice: "Password changed. Other browsers were signed out and API tokens and connected apps revoked."
       end
     end
     load_lists

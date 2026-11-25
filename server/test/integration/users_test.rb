@@ -40,12 +40,15 @@ class UsersTest < ActionDispatch::IntegrationTest
     post "/login", params: { email: "bo@example.com", password: "" }
     assert_response :unprocessable_entity
     get "/password/#{token}"
+    # The token moves into the session; later requests carry no token.
+    assert_redirected_to "/password"
+    follow_redirect!
     assert_response :success
-    patch "/password/#{token}", params: { password: "short", password_confirmation: "short" }
+    patch "/password", params: { password: "short", password_confirmation: "short" }
     assert_response :unprocessable_entity
-    patch "/password/#{token}", params: { password: "a long enough password", password_confirmation: "different one here" }
+    patch "/password", params: { password: "a long enough password", password_confirmation: "different one here" }
     assert_response :unprocessable_entity
-    patch "/password/#{token}", params: { password: "a long enough password", password_confirmation: "a long enough password" }
+    patch "/password", params: { password: "a long enough password", password_confirmation: "a long enough password" }
     assert_redirected_to "/"
     get "/"
     assert_response :success
@@ -54,6 +57,7 @@ class UsersTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     # The link works once.
     get "/password/#{token}"
+    follow_redirect!
     assert_response :not_found
   end
 

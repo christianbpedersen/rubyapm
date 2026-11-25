@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/christianbpedersen/ruby_apm.git
-  revision: 109dbbd51465bdf0e3b9ba55b6df94128a965a7a
-  tag: v0.2.1
+  revision: d7aa8a2b1cb9ecf80edf76bfa5fa241904be95c4
+  tag: v0.2.2
   specs:
-    ruby_apm (0.2.1)
+    ruby_apm (0.2.2)
       activesupport (>= 7.0)
       msgpack (>= 1.4)
 

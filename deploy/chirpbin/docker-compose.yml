@@ -51,9 +51,10 @@ services:
       RAILS_RELATIVE_URL_ROOT: /apm
       RUBY_APM_BASE_URL: ${RUBY_APM_BASE_URL:-https://chirpbin.com/apm}
       RUBY_APM_AUTO_REGISTER: "0"
-    ports:
-      # 3600 verified free; 3100 amexalert, 3200 agent, 3300 docs, 3400 auth, 3500 protect.
-      - "${WEB_PORT:-3600}:3000"
+      # Internal host name agents on the chirpbin network report to.
+      RUBY_APM_HOSTS: chirpbin-apm-web
+    # No published port: Caddy and the agents reach the app over the
+    # chirpbin network, so it is not exposed on the LAN.
     networks:
       - app
       - chirpbin

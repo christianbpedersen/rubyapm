@@ -1,10 +1,10 @@
 <% content_for :title, "Applications" %>
 <div class="page-head">
   <div><h1>Applications</h1><div class="sub">Last hour</div></div>
-  <%= link_to "Add application", new_app_path, class: "button" %>
+  <% if current_user&.admin? %><%= link_to "Add application", new_app_path, class: "button" %><% end %>
 </div>
 <% if @apps.empty? %>
-  <div class="panel empty">No applications yet. <%= link_to "Add one", new_app_path %>, or point an agent at this server (in development, unknown API keys register themselves).</div>
+  <div class="panel empty">No applications yet. <% if current_user&.admin? %><%= link_to "Add one", new_app_path %>, or point<% else %>An admin can add one, or point<% end %> an agent at this server (in development, unknown API keys register themselves).</div>
 <% end %>
 <div class="grid three">
   <% @apps.each do |app| %>

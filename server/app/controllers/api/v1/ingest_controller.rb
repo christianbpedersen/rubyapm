@@ -8,13 +8,17 @@ module Api
       class TooLarge < StandardError; end
 
       def create
-        raw = request.raw_post.to_s
-        return head(:payload_too_large) if raw.bytesize > MAX_BODY
+        # Size and key are checked before the body is read: an unauthenticated
+        # caller must not be able to make the server buffer large uploads.
+        return head(:content_too_large) if request.content_length.to_i > MAX_BODY
 
         app = App.for_ingest(bearer_token, nil)
         # Unknown keys are only worth decoding when they may self-register;
         # never inflate a body for a caller we would reject anyway.
         return head(:unauthorized) unless app || (Rails.configuration.x.auto_register_apps && bearer_token.present?)
+
+        raw = request.raw_post.to_s
+        return head(:content_too_large) if raw.bytesize > MAX_BODY
 
         doc = decode(raw)
         app ||= App.for_ingest(bearer_token, doc["app"])

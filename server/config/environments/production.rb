@@ -24,6 +24,14 @@ Rails.application.configure do
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
 
+  # Only answer to known host names: a forged Host or X-Forwarded-Host must
+  # not end up in redirects, OAuth issuer metadata or SAML URLs. The public
+  # host comes from RUBY_APM_BASE_URL; RUBY_APM_HOSTS adds internal names
+  # agents use (e.g. the Docker service name).
+  config.hosts = [URI(ENV.fetch("RUBY_APM_BASE_URL", "http://localhost")).host, "localhost", "127.0.0.1",
+                  *ENV.fetch("RUBY_APM_HOSTS", "").split(",").map(&:strip).reject(&:empty?)]
+  config.host_authorization = { exclude: ->(request) { request.path.end_with?("/up") } }
+
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   # TLS ends at the load balancer; agents post over plain HTTP inside the cluster.
   config.force_ssl = false

@@ -9,7 +9,7 @@
     <meta name="turbo-refresh-scroll" content="preserve">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    <script>
+    <script nonce="<%= content_security_policy_nonce %>">
       // Apply the saved theme before first paint; no saved choice follows the OS.
       try { var t = localStorage.getItem("nf-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t } catch (e) {}
     </script>

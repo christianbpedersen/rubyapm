@@ -64,7 +64,11 @@ class AlertPolicy < ApplicationRecord
   def webhook_url_is_http
     return if webhook_url.blank?
     uri = URI.parse(webhook_url)
-    errors.add(:webhook_url, "must be an http(s) URL") unless uri.is_a?(URI::HTTP) && uri.host.present?
+    return errors.add(:webhook_url, "must be an http(s) URL") unless uri.is_a?(URI::HTTP) && uri.host.present?
+    return if WebhookTarget.allow_private?
+    errors.add(:webhook_url, "must use port 80 or 443") unless WebhookTarget::PORTS.include?(uri.port)
+    literal = (IPAddr.new(uri.host.delete("[]")) rescue nil)
+    errors.add(:webhook_url, "must point at a public internet address") if literal && WebhookTarget.blocked?(literal.to_s)
   rescue URI::InvalidURIError
     errors.add(:webhook_url, "is not a valid URL")
   end
