@@ -87,9 +87,8 @@ module ApplicationHelper
   end
 
   # JSON for the Stimulus chart controller.
-  # Durations over time get a logarithmic Y axis by default (log: false opts out).
-  def chart(type:, series:, unit: "ms", stacked: false, height: 200, labels: nil, zoom: true, title: nil, x: "time", m: metrics, legend: true, log: nil)
-    log = unit == "ms" && x == "time" && type != "bar" if log.nil?
+  # Linear Y axis; pass log: true for a logarithmic one.
+  def chart(type:, series:, unit: "ms", stacked: false, height: 200, labels: nil, zoom: true, title: nil, x: "time", m: metrics, legend: true, log: false)
     config = {
       type: type, unit: unit, stacked: stacked, zoom: zoom && x == "time", x: x, legend: legend, log: log,
       labels: labels || m.bins, step: m.step,
